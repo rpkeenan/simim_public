@@ -16,7 +16,8 @@ far-infrared.
    :maxdepth: 2
 
    installation
-   first_look_workbook
+   notebooks/getting_data
+   notebooks/first_look
 
 .. toctree::
    :caption: Simulation Interface
