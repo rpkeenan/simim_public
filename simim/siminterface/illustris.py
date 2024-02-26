@@ -48,6 +48,11 @@ class illustris_catalogs(sim_catalogs):
         """
         
 
+        # Initialize catalog
+        sim_catalogs.__init__(self,sim, path, snaps, updatepath)
+
+        self.api_key = api_key
+
         # Figure out the snapshots needed
         if self.sim[:3] == 'Ill':
             self.allsnaps = np.arange(136)
@@ -58,11 +63,6 @@ class illustris_catalogs(sim_catalogs):
 
         elif self.sim[:3] == 'TNG':
             self.allsnaps =  np.arange(100)
-
-        # Initialize catalog
-        sim_catalogs.__init__(self,sim, path, snaps, updatepath)
-
-        self.api_key = api_key
 
         # Initialize fields
         self.basic_fields = {# Spatial position within the periodic box (of the
