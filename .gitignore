@@ -6,3 +6,5 @@
 **.jpeg
 
 **.egg-info
+
+docs/_build/*
