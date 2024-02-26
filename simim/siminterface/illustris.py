@@ -8,14 +8,12 @@ from simim.siminterface import illustris_datahandling as idh
 from simim.siminterface._rawsiminterface import sim_catalogs, snapshot
 from simim.siminterface._sims import _checksim
 
-_IllustrisAPIKey = '07e2073a308296154fc216ae62145316'
-
 class illustris_catalogs(sim_catalogs):
     """Class to download and format Illustris or TNG group catalogs"""
 
     def __init__(self,
                  sim, 
-                 api_key=_IllustrisAPIKey,
+                 api_key,
                  path='auto',
                  snaps='all',
                  updatepath=True,
