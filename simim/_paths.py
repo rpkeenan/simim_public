@@ -15,10 +15,10 @@ class _paths():
             os.mkdir(simim_path.joinpath('resources'))
         
         # Path to the list of paths
-        self.root_file = simim_path.join('resources','rootpath.txt')
-        self.lc_file = simim_path.join('resources','lcpaths.txt')
-        self.path_file = simim_path.join('resources','filepahts.txt')
-        self.sfr_file = simim_path.join('resources','sfrpaths.txt')
+        self.root_file = simim_path.joinpath('resources','rootpath.txt')
+        self.lc_file = simim_path.joinpath('resources','lcpaths.txt')
+        self.path_file = simim_path.joinpath('resources','filepahts.txt')
+        self.sfr_file = simim_path.joinpath('resources','sfrpaths.txt')
 
         # Load values, if they exist
         self.root = None
