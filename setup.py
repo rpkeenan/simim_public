@@ -7,5 +7,5 @@ setup(name='simim',
       author='R P Keenan',
       packages=find_packages(),
       include_package_data=True,
-      package_data={'':'simim/resources/*.txt'}
+      package_data={'':['simim/resources/*.txt']}
       )
