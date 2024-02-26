@@ -37,14 +37,14 @@ class universemachine_catalogs(sim_catalogs):
             default path to this simulation in future uses.
         """
 
-        super().__init__(sim, path, snaps, updatepath)
-
-        if self.sim == 'UniverseMachine-BolshoiPlanck':
+        if sim == 'UniverseMachine-BolshoiPlanck':
             self.allsnaps = np.arange(178)
-        elif self.sim == 'UniverseMachine-SMDPL':
+        elif sim == 'UniverseMachine-SMDPL':
             self.allsnaps = np.arange(118)
-        elif self.sim == 'UniverseMachine-MDPL2':
+        elif sim == 'UniverseMachine-MDPL2':
             self.allsnaps = np.arange(126)
+
+        super().__init__(sim, path, snaps, updatepath)
 
         self.web_path = os.path.join(self.path, 'web_paths.npy')
         if self.sim == 'UniverseMachine-BolshoiPlanck':
