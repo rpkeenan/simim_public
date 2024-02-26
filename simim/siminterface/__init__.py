@@ -1,4 +1,4 @@
 # Pre-load modules
-from . import illustris
-from . import universemachine
+from .illustris import illustris_catalogs
+from .universemachine import universemachine_catalogs
 # from . import simhandler
