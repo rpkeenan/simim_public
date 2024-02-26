@@ -1,8 +1,8 @@
-*__pycache__
-*.DS_Store
-*.npz
-*.png
-*.jpg
-*.jpeg
+**__pycache__
+**.DS_Store
+**.npz
+**.png
+**.jpg
+**.jpeg
 
-simim.egg-info
+**.egg-info
