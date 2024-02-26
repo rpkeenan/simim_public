@@ -1,0 +1,8 @@
+*__pycache__
+*.DS_Store
+*.npz
+*.png
+*.jpg
+*.jpeg
+
+simim.egg-info
