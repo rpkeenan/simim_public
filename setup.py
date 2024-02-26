@@ -14,6 +14,7 @@ setup(name='simim',
           'scipy',
           'h5py',
           'matplotlib',
-          'importlib_resources'
+          'importlib_resources',
+          'requests'
       ]
       )
