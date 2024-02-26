@@ -4,7 +4,6 @@ groupcat.py: File I/O related to the FoF and Subfind group catalogs.
 This was taken from the Illustris tutorial demonstrating how to interface
 with the data and has been slightly modified. See here: https://www.tng-project.org/data/docs/api/
 """
-import six
 from os.path import isfile, join, sep
 import numpy as np
 import h5py
@@ -33,7 +32,7 @@ def _loadObjects(basePath, snapNum, gName, nName, fields):
     result = {}
 
     # make sure fields is not a single element
-    if isinstance(fields, six.string_types):
+    if isinstance(fields, str):
         fields = [fields]
 
     # load header from first chunk
