@@ -307,7 +307,7 @@ class illustris_catalogs(sim_catalogs):
             self.raw_fname = 'fof_subhalo_tab_'
 
     # Function to load the data in a format we want:
-    def loader(self, path, snapshot, fields):
+    def _loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog
 
         This is promarily meant for internal use by the .format method
@@ -335,7 +335,7 @@ class illustris_catalogs(sim_catalogs):
         n_halos = subhalos.pop('count')
         return subhalos, n_halos
 
-    def get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfile(self, snapshot):
         """Get path to a snapshot's raw file"""
         return os.path.join('groups_{:03d}'.format(snapshot))
 

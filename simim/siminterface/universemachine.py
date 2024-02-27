@@ -49,13 +49,13 @@ class universemachine_catalogs(sim_catalogs):
         self.web_path = os.path.join(self.path, 'web_paths.npy')
         if self.sim == 'UniverseMachine-BolshoiPlanck':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/SFR_ASCII/'
-            self.loader = self.ascii_loader
+            self._loader = self._ascii_loader
         elif self.sim == 'UniverseMachine-SMDPL':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/SMDPL_SFR/'
-            self.loader = self.bin_loader
+            self._loader = self._bin_loader
         elif self.sim == 'UniverseMachine-MDPL2':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/MDPL2_SFR/'
-            self.loader = self.bin_loader
+            self._loader = self._bin_loader
 
         if os.path.exists(self.web_path):
             self.web_files = np.load(self.web_path)
@@ -187,7 +187,7 @@ class universemachine_catalogs(sim_catalogs):
 
     # Functions to load the data in a format we want:
     # Fields to ignore: flags, uparent_dist, rank2, ra, rarank
-    def ascii_loader(self, path, snapshot, fields):
+    def _ascii_loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog - for ascii formatted
         UM data
 
@@ -225,7 +225,7 @@ class universemachine_catalogs(sim_catalogs):
 
         return subhaols, n_halos
 
-    def bin_loader(self, path, snapshot, fields):
+    def _bin_loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog - for binary formatted
         UM data
 
@@ -272,7 +272,7 @@ class universemachine_catalogs(sim_catalogs):
 
         return subhalos, n_halos
 
-    def get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfile(self, snapshot):
         """Get path to a snapshot's raw file"""
         return self.web_files[snapshot]
 
@@ -290,7 +290,7 @@ class universemachine_catalogs(sim_catalogs):
             >>> x = universemachine_catalogs(...,snaps=[10,11,12])
             >>> x.download()
         """
-
+        
         # Check that metadata doesn't already exist
         if not redownload:
             if os.path.exists(self.meta_path):

@@ -215,7 +215,7 @@ class sim_catalogs():
     self.snap_meta_path. Look at existing code for examples of how to do
     this.
 
-    3. The extended class needs a self.loader which takes as arguments the
+    3. The extended class needs a self._loader which takes as arguments the
     path to the data, a snapshot number, and a list of fields and returns
     a dictionary containing key-value pairs of the property name and the 
     values for every halo of the property, along with an integer specifying
@@ -310,11 +310,11 @@ class sim_catalogs():
 
         # Initialize a function to get halos - this must be modified when
         # creating the actual class, it's here as a template
-        # def loader(path, snapshot, fields):
+        # def _loader(path, snapshot, fields):
         #     subhalos = {'anykey':[]}
         #     n_halos = len(subhalos['anykey'])
         #     return subhalos, n_halos
-        # self.loader = loader
+        # self._loader = _loader
 
     def clean_raw(self):
         """Remove unformatted data for a simulation
@@ -466,7 +466,7 @@ class sim_catalogs():
             print("Formatting snap {}".format(snap))
 
             # Load stuff in from original file formats
-            subhalos, n_halos = self.loader(path=os.path.join(self.path,'raw',''), snapshot=snap, fields=self.all_fields.keys())
+            subhalos, n_halos = self._loader(path=os.path.join(self.path,'raw',''), snapshot=snap, fields=self.all_fields.keys())
 
             # Format values
             if n_halos > 0:
@@ -573,7 +573,7 @@ class sim_catalogs():
             
             # Delete raw data if requested
             if realtime_clean_raw:
-                file_path = os.path.join(self.path,'raw',self.get_rawsnapfile(snap))
+                file_path = os.path.join(self.path,'raw',self._get_rawsnapfile(snap))
                 os.system("rm -r {}".format(file_path))
 
 
