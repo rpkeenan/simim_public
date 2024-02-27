@@ -1,5 +1,4 @@
 import os
-import numpy as np
 from importlib_resources import files
 from .siminterface._sims import _checksim
 
