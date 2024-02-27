@@ -58,3 +58,7 @@ html_static_path = ['_static']
 
 # html_logo = 'images/logo.png'
 # html_favicon = 'images/small_logo.ico'
+
+# -- Options for autodoc -------------------------------------------------
+autoclass_content = "both"
+autodoc_member_order = "bysource"

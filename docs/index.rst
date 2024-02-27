@@ -39,6 +39,7 @@ far-infrared.
 
 .. toctree::
    :caption: API
-   :maxdepth: 5
+   :maxdepth: 3
 
-   api
+   api_siminterface
+   api_todo
