@@ -17,7 +17,7 @@ class _paths():
         # Path to the list of paths
         self.root_file = simim_path.joinpath('resources','rootpath.txt')
         self.lc_file = simim_path.joinpath('resources','lcpaths.txt')
-        self.path_file = simim_path.joinpath('resources','filepahts.txt')
+        self.path_file = simim_path.joinpath('resources','filepaths.txt')
         self.sfr_file = simim_path.joinpath('resources','sfrpaths.txt')
 
         # Load values, if they exist
