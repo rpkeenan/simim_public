@@ -9,7 +9,7 @@ import astropy.units as u
 
 from simim import _paths
 from simim._handlers import handler
-from simim.map import gridder
+# from simim.map import gridder
 from simim.siminterface._sims import _checksim
 
 class snaphandler(handler):
@@ -94,6 +94,9 @@ class snaphandler(handler):
         grid : simim.map.grid instance
             The gridded properties
         """
+
+### Fix this once maps is implemented
+        raise ValueError("simim version does not support gridding")
 
         x = self.return_property('pos_x',in_h_units=in_h_units,use_all_inds=use_all_inds)
         y = self.return_property('pos_y',in_h_units=in_h_units,use_all_inds=use_all_inds)
