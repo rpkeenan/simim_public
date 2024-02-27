@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 
-from simim.siminterface import illustris_datahandling as idh
+from simim.siminterface import _illustris_datahandling as idh
 from simim.siminterface._rawsiminterface import sim_catalogs, snapshot
 from simim.siminterface._sims import _checksim
 
