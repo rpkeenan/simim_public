@@ -1,8 +1,26 @@
 The ``siminterface`` Module
 ===========================
 
-Interacting with Specific Simulations
--------------------------------------
+Interacting with Simulations Using SimIM
+----------------------------------------
+
+Once they are formatted, **SimIM** interfaces with all simulation data
+through ``handler`` classes. The ``simhandler`` class provides an 
+interface to all data from a simulation, while the ``snaphandler`` class
+provides an interface with data from a single simulation snapshot.
+
+.. currentmodule:: simim.siminterface
+.. autoclass:: simhandler
+    :members:
+    :inherited-members:
+
+.. autoclass:: snaphandler
+    :members:
+    :inherited-members:
+
+
+Downloading and Formatting Simulations
+--------------------------------------
 
 These are tools for downloading and formatting simulation data from
 various sources.
@@ -15,6 +33,7 @@ various sources.
 .. autoclass:: universemachine_catalogs
     :members:
     :inherited-members:
+
 
 Under the Hood
 --------------

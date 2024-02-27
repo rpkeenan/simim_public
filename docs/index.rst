@@ -13,10 +13,11 @@ far-infrared.
 
 .. toctree::
    :caption: Getting Started
-   :maxdepth: 2
+   :maxdepth: 3
 
    installation
    notebooks/getting_data
+   notebooks/interacting_with_sims
    notebooks/first_look
 
 .. toctree::
