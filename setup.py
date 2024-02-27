@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='simim',
       version='2.0',
@@ -7,10 +7,10 @@ setup(name='simim',
       url='https://github.com/rpkeenan/simim',
       author='R P Keenan',
       license='MIT',
-      packages=['simim'],
+      packages=find_packages(),
       include_package_data=True,
       package_data={'':['simim/resources/*.txt']},
-      python_requires='>3.0'
+      python_requires='>3.0',
       install_requires=[
           'astropy',
           'numpy',

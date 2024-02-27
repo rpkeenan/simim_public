@@ -216,7 +216,7 @@ class _paths():
 
         self.sfrs[item] = new_path
 
-class create_paths():
+class setupsimim():
     """Does all of the initialization"""
 
     def __init__(self):
