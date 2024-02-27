@@ -29,7 +29,7 @@ directory to hold large data files created and used by
     >>> from simim import setupsimim
     >>> setupsimim()
     Please specify a path to save data directories.
-    Specifying no path will set the path to your home direcotry.
+    Specifying no path will set the path to your home directory.
     Path: [path to data directory]
     Files will be saved in [path to data directory]/simim_resources
     Is this okay? y/n: [enter y to continue]
@@ -63,7 +63,7 @@ included in the source code distribution:
 
     $ python setupsimim.py
     Please specify a path to save data directories.
-    Specifying no path will set the path to your home direcotry.
+    Specifying no path will set the path to your home directory.
     Path: [path to data directory]
     Files will be saved in [path to data directory]/simim_resources
     Is this okay? y/n: [enter y to continue]

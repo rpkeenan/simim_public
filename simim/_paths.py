@@ -224,7 +224,7 @@ class setupsimim():
         path = _paths()
 
         print("Please specify a path to save data directories.")
-        print("Specifying no path will set the path to your home direcotry.")
+        print("Specifying no path will set the path to your home directory.")
         root = input("Path: ")
         if root == '':
             root = '~'
