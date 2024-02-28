@@ -7,23 +7,25 @@ import numpy as np
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 
-from simim import _paths
-from simim._handlers import handler
+from simim._paths import _SimIMPaths
+from simim._handlers import Handler
 # from simim.map import gridder
 from simim.siminterface._sims import _checksim
 
-class snaphandler(handler):
-    """Handler for individual snapshots - see generic handler
+class SnapHandler(Handler):
+    """Handler for individual snapshots - see generic Handler
     documentation. 
     
-    The simplest way to initialize a snaphandler instance is
-    probably via a simhandler instance for the simulation 
+    The simplest way to initialize a SnapHandler instance is
+    probably via a SimHandler instance for the simulation 
     containing the snapshot in question. Then the method 
-    simhandler.get_snap will return a handler for the snapshot
-    with only the snapshot index-number specified."""
+    SimHandler.get_snap will return a Handler instance for 
+    the snapshot with only the snapshot index-number 
+    specified.
+    """
 
     def __init__(self,path,snap,redshift,cosmo,box_edge):
-        """Initialize handler for a simulation snapshot
+        """Initialize Handler for a simulation snapshot
         
         Parameters
         ----------
@@ -67,7 +69,7 @@ class snaphandler(handler):
         Parameters
         ----------
         property_names : str
-            The name or names of properties in the handler instance
+            The name or names of properties in the Handler instance
         in_h_units : bool, default=False
             If True, positions and property values fed to the gridder will be
             in units including little h. If False, little h dependence will be 
@@ -139,23 +141,23 @@ class snaphandler(handler):
 
 
 
-class simhandler():
+class SimHandler():
     """Class to handle I/O for subhalo/galaxy catalogs in SimIM format
     
     This class handles basic operations for accessing and masking simulation
-    data. It is a wrapper around handlers for individual snapshots, and
+    data. It is a wrapper around Handlers for individual snapshots, and
     in many cases performs operations iteratively over all snapshots in 
     a particular simulation. It is also a convenient wrapper for accessing
     specific snapshots of a given simulation.
 
-    The general philosophy of handlers is to not load actual properties of 
+    The general philosophy of Handlers is to not load actual properties of 
     a halo into memory until they are requested, and to remove them from 
     memory when they are no longer in use (or at least make it convenient
     to do so).
     """
 
     def __init__(self,sim,init_snaps=False):
-        """Initialize handler for a specified simulation
+        """Initialize Handler for a specified simulation
 
         Provides a generic interface for interacting with data from
         any simulation that has been converted to SimIM format and is
@@ -168,7 +170,7 @@ class simhandler():
         sim : string
             Name of the simulation to load.
         init_snaps : bool, default=False
-            Setting this as True will create persistent handler instances 
+            Setting this as True will create persistent Handler instances 
             for every snapshot, rather than doing so when data from a given 
             handler is called for. This is generally not necessary, but is
             used when creating properties for all snapshots but NOT writing
@@ -179,7 +181,7 @@ class simhandler():
         _checksim(sim)
 
         # Set up a place to keep the data
-        paths = _paths._paths()
+        paths = _SimIMPaths()
         if sim in paths.paths.keys():
             self.path = paths.paths[sim]
         else:
@@ -225,7 +227,7 @@ class simhandler():
             self.initialize_all_snaps(redo=True)
 
     def initialize_all_snaps(self,remake=False):
-        """Initialize snaphandlers for each snapshot
+        """Initialize SnapHandlers for each snapshot
         
         Parameters
         ----------
@@ -245,7 +247,7 @@ class simhandler():
             snap = self.snap_meta['index'][i]
             redshift = self.snap_meta['redshift'][i]
 
-            self.snap_handlers[str(snap)] = snaphandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
+            self.snap_handlers[str(snap)] = SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
         print("Snapshots initialized.")
         self.init_snaps = True
 
@@ -363,7 +365,7 @@ class simhandler():
         return index
 
     def get_snap(self,snap):
-        """Return a snaphandler instance for a specified snapshot
+        """Return a SnapHandler instance for a specified snapshot
         
         Parameters
         ----------
@@ -372,8 +374,8 @@ class simhandler():
 
         Returns
         -------
-        snaphandler
-            A snaphandler instance for the requested snapshot
+        SnapHandler
+            A SnapHandler instance for the requested snapshot
         """
 
         snap_meta = self.extract_snap_meta(snap)
@@ -383,10 +385,10 @@ class simhandler():
         else:
             snap = snap_meta['index']
             redshift = snap_meta['redshift']
-            return snaphandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
+            return SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
 
     def get_snap_from_z(self,z):
-        """Return a snaphandler instance for the snapshot closest to a requested redshift
+        """Return a SnapHandler instance for the snapshot closest to a requested redshift
         
         Parameters
         ----------
@@ -395,8 +397,8 @@ class simhandler():
         
         Returns
         -------
-        snaphandler
-            A snaphandler instance for the requested snapshot
+        SnapHandler
+            A SnapHandler instance for the requested snapshot
         """
 
         return self.get_snap(self.z_to_snap(z))
@@ -404,7 +406,7 @@ class simhandler():
     def set_property_range(self,property_name=None,pmin=-np.inf,pmax=np.inf,reset=True, in_h_units=False):
         """Restrict property range for all snapshots
         
-        This is a wraper around snaphandler.set_property_range
+        This is a wraper around SnapHandler.set_property_range
         that iteratively applies it to all snapshots. Initializing
         handlers for each snapshot is necessary for this to work.
 
@@ -438,10 +440,10 @@ class simhandler():
     def make_property(self, property, rename=None, kw_remap={}, other_kws={}, overwrite=False, use_all_inds=False, write=False, writedtype=None):
         """Use a galprops.prop instance to evaluate a new property over all snapshots
 
-        This is a wraper around snaphandler.make_property that iteratively 
+        This is a wraper around SnapHandler.make_property that iteratively 
         applies it to all snapshots. For this to work, either 1) write must
         be set to True (resulting in the new property being saved to disk) or
-        2) snaphandlers must be initialized for each snapshot, in which case
+        2) SnapHandlers must be initialized for each snapshot, in which case
         the property can be stored only in memory. The latter is likely to 
         require a significant allocation of memory and should be used carefully.
 
@@ -550,7 +552,7 @@ class simhandler():
                   give_args_in_h_units=False, use_all_inds=False, snaps=None):
         """Evaluate stat_function over every snapshot and return results
 
-        This is a wraper around snaphandler.eval_stat that iteratively 
+        This is a wraper around SnapHandler.eval_stat that iteratively 
         applies it to all snapshots. 
         
         Parameters
@@ -600,3 +602,11 @@ class simhandler():
         print("")
             
         return vals, redshifts
+
+# Wrapper for back compatibility
+def simhandler(*args, **kwargs):
+    warnings.warn("simhandler is depricated, use SimHandler instead")
+    return SimHandler(*args, **kwargs)
+def snaphandler(*args, **kwargs):
+    warnings.warn("snaphandler is depricated, use SnapHandler instead")
+    return SnapHandler(*args, **kwargs)

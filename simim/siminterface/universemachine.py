@@ -7,10 +7,10 @@ import requests
 
 import numpy as np
 
-from simim.siminterface._rawsiminterface import sim_catalogs, snapshot
+from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
 
-class universemachine_catalogs(sim_catalogs):
+class UniversemachineCatalogs(SimCatalogs):
     def __init__(self,
                  sim, path='auto',
                  snaps='all',
@@ -192,7 +192,7 @@ class universemachine_catalogs(sim_catalogs):
         UM data
 
         This is promarily meant for internal use by the .format method
-        of the sim_catalogs class
+        of the SimCatalogs class
         
         Parameters
         ----------
@@ -230,7 +230,7 @@ class universemachine_catalogs(sim_catalogs):
         UM data
 
         This is promarily meant for internal use by the .format method
-        of the sim_catalogs class
+        of the SimCatalogs class
         
         Parameters
         ----------
@@ -282,12 +282,12 @@ class universemachine_catalogs(sim_catalogs):
         
         Note: the metadata saved is dependent on the list of snapshots,
         therefore if you plan to use many snapshots for some applications
-        but have for some reason only initialized your illustris_catalogs
+        but have for some reason only initialized your IllustrisCatalogs
         instance with a few it is probably best to do something like the 
         following:
-            >>> x = universemachine_catalogs(...,snaps='all')
+            >>> x = UniversemachineCatalogs(...,snaps='all')
             >>> x.download_meta()
-            >>> x = universemachine_catalogs(...,snaps=[10,11,12])
+            >>> x = UniversemachineCatalogs(...,snaps=[10,11,12])
             >>> x.download()
         """
         
@@ -330,7 +330,7 @@ class universemachine_catalogs(sim_catalogs):
 
         snap_meta_classes = []
         for i in range(self.metadata['number_snaps']):
-            snap_meta_classes.append(snapshot(i,redshifts[i],self.metadata))
+            snap_meta_classes.append(Snapshot(i,redshifts[i],self.metadata))
 
         snap_meta_classes = [snap_meta_classes[i] for i in numbers if i in self.snaps]
 
@@ -392,3 +392,8 @@ class universemachine_catalogs(sim_catalogs):
             print("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
             file_path = os.path.join(self.path,'raw',self.web_files[snap])
             urlretrieve(self.webpage+self.web_files[snap],file_path)
+
+# Wrapper for back compatibility
+def universemachine_catalogs(*args, **kwargs):
+    warnings.warn("universemachine_catalogs is depricated, use UniversemachineCatalogs instead")
+    return UniversemachineCatalogs(*args, **kwargs)
