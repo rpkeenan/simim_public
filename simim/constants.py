@@ -1,3 +1,12 @@
+### PHYSICAL CONSTANTS ###
+# All in SI units
+c = 2.99792458e8 # m s^-1; speed of light
+kB = 1.3806e-23 # m^2 kg s^-2 K^-1; boltzmann constant
+
+### UNIT CONVERSION ###
+Lsun_to_W = 3.828e26
+Mpc_to_m = 3.0857e22
+
 ### FREQUENCIES FOR VARIOUS SPECTRAL LINES ###
 # All values come from Splatalogue and are given in Hz.
 

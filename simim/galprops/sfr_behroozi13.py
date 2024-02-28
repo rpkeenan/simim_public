@@ -201,5 +201,5 @@ class behroozi13_base():
         return stellarmassval
 
 # Aliases to make the required functions easy to access
-behroozi13_sfr = behroozi13_base().sfr
-behroozi13_stellarmass = behroozi13_base().stellarmass
+sfr = behroozi13_base().sfr
+stellarmass = behroozi13_base().stellarmass
