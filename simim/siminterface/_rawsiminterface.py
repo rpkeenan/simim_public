@@ -7,7 +7,7 @@ import astropy.units as u
 import h5py
 import numpy as np
 
-from simim.paths import _SimIMPaths
+from simim._paths import _SimIMPaths
 from simim.siminterface._sims import _checksim
 
 
@@ -130,7 +130,7 @@ class Snapshot():
 #    -- dataset:
 #         note: mass units - Msun/h, lenghth units Mpc/h, time units Gyr/h
 
-class atalogs():
+class SimCatalogs():
     """Generic class for interacting with simulation halo catalogs and
     converting them into SimIM's preferred format.
     
@@ -255,11 +255,11 @@ class atalogs():
         # Set up a place to keep the data
         paths = _SimIMPaths()
         if path == 'auto':
-            if self.sim in paths.paths.keys():
-                self.path = paths.paths[self.sim]
+            if self.sim in paths.sims:
+                self.path = paths.sims[self.sim]
             else:
                 paths._newsimpath(self.sim)
-                self.path = paths.paths[self.sim]
+                self.path = paths.sims[self.sim]
         else:
             if not os.path.exists(path):
                 raise NameError("Specified path not found")

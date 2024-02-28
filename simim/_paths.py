@@ -1,6 +1,5 @@
 import os
 from importlib_resources import files
-from .siminterface._sims import _checksim
 
 def _checkload_root_file(path):
     """Check if root path file exists and read file contents"""
@@ -38,13 +37,15 @@ class _SimIMPaths():
         # Places where files are saved...
         self.lcpath_ext = os.path.join('simim_resources','.paths','lcpaths.txt')
         self.simpath_ext = os.path.join('simim_resources','.paths','simpaths.txt')
-        self.prop_ext = os.path.join('simim_resources','.paths','proppaths.txt')
+        self.proppath_ext = os.path.join('simim_resources','.paths','proppaths.txt')
 
         self.lc_ext = os.path.join('simim_resources','lightcones')
         self.sim_ext = os.path.join('simim_resources','simulations')
         self.prop_ext = os.path.join('simim_resources','galprops')
 
+        self._load_paths()
 
+    def _load_paths(self):
         if self.root is None:
             self.lcs = {}
             self.sims = {}
@@ -87,7 +88,7 @@ class _SimIMPaths():
         #             line_split = line.replace('\n','').split(' ')
         #             self.sfrs[line_split[0]] = line_split[1]
 
-    def _setuppath(self,root='~'):
+    def _setuppath(self,root='~',confirm_with_user=False):
         """Create a directory root/simim_resources/simulations"""
 
         # Get the right thing for the home directory
@@ -114,31 +115,32 @@ class _SimIMPaths():
             raise NameError("Specified path not found")
 
         root = os.path.abspath(root)
-        print("Files will be saved in {}".format(os.path.join(root,'simim_resources')))
-        answer = input("Is this okay? y/n: ")
-        while answer != 'y':
-            if answer == 'n':
-                print("Aborting root setup")
-                return
-            print("Response not recognized.\n")
+
+        if confirm_with_user:
             print("Files will be saved in {}".format(os.path.join(root,'simim_resources')))
             answer = input("Is this okay? y/n: ")
+            while answer != 'y':
+                if answer == 'n':
+                    print("Aborting root setup")
+                    return
+                print("Response not recognized.\n")
+                print("Files will be saved in {}".format(os.path.join(root,'simim_resources')))
+                answer = input("Is this okay? y/n: ")
 
         # Save the root location
         with open(self.root_file,'w') as file:
             file.write(root)
         self.root = root
 
-        if not os.path.exists(os.path.join(root,'simim_resources')):
-            os.mkdir(os.path.join(root,'simim_resources'))
-        if not os.path.exists(os.path.join(root,'simim_resources','.paths')):
-            os.mkdir(os.path.join(root,'simim_resources','.paths'))
-        if not os.path.exists(os.path.join(root,self.sim_ext)):
-            os.mkdir(os.path.join(root,self.sim_ext))
-        if not os.path.exists(os.path.join(root,self.lc_ext)):
-            os.mkdir(os.path.join(root,self.lc_ext))
-        if not os.path.exists(os.path.join(root,self.prop_ext)):
-            os.mkdir(os.path.join(root,self.prop_ext))
+        for path in [os.path.join(root,'simim_resources'),
+                      os.path.join(root,'simim_resources','.paths'),
+                      os.path.join(root,self.sim_ext),
+                      os.path.join(root,self.lc_ext),
+                      os.path.join(root,self.prop_ext)]:
+            if not os.path.exists(path):
+                os.mkdir(path)
+
+        self._load_paths()
 
     def _newsimpath(self,sim,new_path='auto',checkoverwrite=True):
         """Add a new path to the paths list"""
@@ -147,14 +149,11 @@ class _SimIMPaths():
         if self.root is None:
             raise ValueError("A data directory for SimIM has not been specified - please import and run simim.setupsimim")
 
-        # Check that simulation is supported
-        _checksim(sim)
-
         # Check if a path is already specified
         if checkoverwrite:
-            if sim in self.paths:
+            if sim in self.sims:
                 print("A path for this simulation has already been specified:")
-                print("   {}".format(self.paths[sim]))
+                print("   {}".format(self.sims[sim]))
                 answer = input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
@@ -183,20 +182,17 @@ class _SimIMPaths():
         self.sims[sim] = new_path
 
     def _newlcpath(self,sim,new_path='auto',checkoverwrite=True):
-        """Add a new path to the lightcones list"""
+        """Add a new path to the lcs list"""
 
         # Check that a root location is known
         if self.root is None:
             raise ValueError("A data directory for SimIM has not been specified - please import and run simim.setupsimim")
 
-        # Check that simulation is supported
-        _checksim(sim)
-
         # Check if a path is already specified
         if checkoverwrite:
-            if sim in self.lightcones.keys():
+            if sim in self.lcs:
                 print("A location for light cones from this simulation has already been specified:")
-                print("   {}".format(self.lightcones[sim]))
+                print("   {}".format(self.lcs[sim]))
                 answer = input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
@@ -225,7 +221,7 @@ class _SimIMPaths():
         self.lcs[sim] = new_path
 
     def _newproppath(self,item,new_path='auto',checkoverwrite=True):
-        """Add a new path to the sfr list"""
+        """Add a new path to the props list"""
 
         # Check that a root location is known
         if self.root is None:
@@ -233,9 +229,9 @@ class _SimIMPaths():
 
         # Check if a path is already specified
         if checkoverwrite:
-            if item in self.sfrs.keys():
+            if item in self.props:
                 print("A location for this SFR data has already been specified:")
-                print("   {}".format(self.sfrs[item]))
+                print("   {}".format(self.props[item]))
                 answer = input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
@@ -277,4 +273,4 @@ class setupsimim():
             root = '~'
         elif not os.path.exists(root):
             raise NameError("Specified path does not exist. Please create path and try again.")
-        path._setuppath(root=root)
+        path._setuppath(root=root,confirm_with_user=True)
