@@ -6,3 +6,4 @@ from . import siminterface
 # from . import galprops
 # from . import lightcone
 # from . import map
+# from . import inst
