@@ -5,16 +5,16 @@ import numpy as np
 
 from simim._pltsetup import *
 
-class handler():
+class Handler():
     """Generic class for handling SimIM formatted simulation data
     
-    The simim.siminterface.simhandler.snaphandler and 
-    simim.lightcone.handler.lightcone child classes build on this
+    The simim.siminterface.SnapHandler and 
+    simim.lightcone.LCHandler child classes build on this
     code.
     """
 
     def __init__(self,path,objectname,groupname):
-        """Initialize the handler instance
+        """Initialize the Handler instance
 
         Parameters
         ----------
@@ -413,7 +413,7 @@ class handler():
     def eval_stat(self, stat_function, kwargs, kw_remap={}, other_kws={},
                   use_all_inds=False,
                   give_args_in_h_units=False):
-        """Evaluate stat_function over the objects in a handler instance
+        """Evaluate stat_function over the objects in a Handler instance
         and return the result
 
         This can be used to evaluate any function of the the properties contained
@@ -423,12 +423,12 @@ class handler():
         Parameters
         ----------
         stat_function : function
-            Any function which can be applied to data in a handler instance
+            Any function which can be applied to data in a Handler instance
         kwargs : list
             List containing the arguments that must be passed to stat_function
         kw_remap : dict
             Dictionary mapping between function arguments (listed in kwargs) as 
-            the keys and the names of handler properties to feed in as values.
+            the keys and the names of Handler properties to feed in as values.
             E.g. to provide handler property 'mass' to stat_function argument 'a'
             one would use kw_remap={'a':'mass'}
         other_kws : dict, optional
