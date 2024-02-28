@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib import rc_context
+from matplotlib import colormaps
 
 pltsty = {
     'font.size' : 18,
@@ -24,6 +25,5 @@ def pltdeco(func):
             return func(*args, **kwargs)
     return wrapper
 
-cmap = cm.get_cmap('viridis')
-cmap_r = cm.get_cmap('viridis_r')
-
+cmap = colormaps['viridis']
+cmap_r = colormaps['viridis_r']
