@@ -2,7 +2,7 @@ import numpy as np
 
 from simim.galprops.log10normal import log10normal
 from simim import constants
-from simim.galprops import dutycycle
+from simim.galprops.line_co_dutycycle import f_duty
 
 def keating16(mass,
               m_min=1e10, A=6.3e-7,
@@ -124,7 +124,7 @@ def pullen13(mass, redshift, cosmo,
         The assigned CO luminosities in Lsun
     """
 
-    fraction_on = dutycycle.f_duty(sf_length,redshift,cosmo)
+    fraction_on = f_duty(sf_length,redshift,cosmo)
     mass = np.array(mass,ndmin=1)
     L_co = 1e6 * mass/5e11
 
