@@ -257,7 +257,7 @@ def kamenetzky16(sfr,
     b_not         = np.array([ 0.8,  0.4,  0.9,  1.2,  2.1,  2.3,  2.8,  2.5,  2.7,  2.5,  2.7,  3.4,  2.2])
     b_sig_not     = np.array([ 0.8,  0.9,  0.4,  0.5,  0.5,  0.4,  0.4,  0.5,  0.5,  0.5,  0.6,  0.4,  0.5])
 
-    L_fir = sfr/d_mf*1e10*fircorr
+    L_fir = sfr/d_mf*1e10*fircor
 
     a_gal = np.zeros((len(sfr), len(lines)))
     b_gal = np.zeros((len(sfr), len(lines)))
