@@ -4,17 +4,17 @@ The ``siminterface`` Module
 Interacting with Simulations Using SimIM
 ----------------------------------------
 
-Once they are formatted, **SimIM** interfaces with all simulation data
-through ``handler`` classes. The ``simhandler`` class provides an 
-interface to all data from a simulation, while the ``snaphandler`` class
-provides an interface with data from a single simulation snapshot.
+Once they are formatted, **SimIM** interfaces with all simulation data through
+"Handler" classes. The ``SimHandler`` class provides an interface to all data
+from a simulation, while the ``SnapHandler`` class provides an interface with
+data from a single simulation snapshot.
 
 .. currentmodule:: simim.siminterface
-.. autoclass:: simhandler
+.. autoclass:: SimHandler
     :members:
     :inherited-members:
 
-.. autoclass:: snaphandler
+.. autoclass:: SnapHandler
     :members:
     :inherited-members:
 
@@ -22,15 +22,15 @@ provides an interface with data from a single simulation snapshot.
 Downloading and Formatting Simulations
 --------------------------------------
 
-These are tools for downloading and formatting simulation data from
-various sources.
+These are tools for downloading and formatting simulation data from various
+sources.
 
 .. currentmodule:: simim.siminterface
-.. autoclass:: illustris_catalogs
+.. autoclass:: IllustrisCatalogs
     :members:
     :inherited-members:
 
-.. autoclass:: universemachine_catalogs
+.. autoclass:: UniversemachineCatalogs
     :members:
     :inherited-members:
 
@@ -38,15 +38,15 @@ various sources.
 Under the Hood
 --------------
 
-These features are useful for building installers for new simulations,
-which should work by extending the ``simim.siminterface._rawsiminterface.sim_catalogs``
+These features are useful for building installers for new simulations, which
+should work by extending the ``simim.siminterface._rawsiminterface.SimCatalogs``
 class.
 
 .. currentmodule:: simim.siminterface._rawsiminterface
-.. autoclass:: sim_catalogs
+.. autoclass:: SimCatalogs
     :members:
     :inherited-members:
 
-.. autoclass:: snapshot
+.. autoclass:: Snapshot
     :members:
     :inherited-members:

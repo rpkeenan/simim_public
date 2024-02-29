@@ -1,8 +1,3 @@
-The ``galprops`` Module
-=======================
-
-Coming soon
-
 The ``lightcone`` Module
 ========================
 
