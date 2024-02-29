@@ -1,6 +1,23 @@
 Installing SimIM
 ================
 
+Requirements
+------------
+
+Python 3 is required. The package has been primarily developed on Python 3.11
+and tested on 3.6; compatibility with Python versions earlier than 3.6 is not
+guaranteed.
+
+Most **SimIM** dependencies are common astronomical/scientific computing or
+visualization packages. The PyPI installation will automatically include these
+files.
+
+Some **SimIM** features rely on the GNU Wget application. Instructions for
+installing it are available on the `GNU Wget webage
+<https://www.gnu.org/software/wget/>`_. It can be installed on MacOS via
+`homebrew <https://brew.sh/>`_. This is only necessary if you intend to use
+**SimIM** to download Illustris/TNG data files.
+
 From PyPI
 ---------
 
@@ -9,14 +26,7 @@ via pip.
 
 .. code-block:: console
 
-    $ pip install SimIM
-
-Python 3 is required. The package has been primarily developed on Python 3.11
-and tested on 3.6; compatibility with Python versions earlier than 3.6 is not
-guaranteed.
-
-Most **SimIM** dependencies are common astronomical/scientific computing or
-visualization packages.
+    $ pip install simim
 
 Once **SimIM** is installed an additional step is required to set up paths for
 data storage. This can by done by running the ``setupsimim`` command in the 
@@ -73,3 +83,7 @@ running the ``setupsimim.py`` script included in the source code distribution.
     version of **SimIM** (unless the repo itself is the installed version).
     If you will be executing code using **SimIM** outside the repo, then 
     you should run ``setupsimim`` from a different location.
+
+If you plan to contribute to the **SimIM** repository, a few additional
+dependencies exist for building the documentation pages. These are listed in the
+``docs/requirements.txt`` file.

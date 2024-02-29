@@ -1,5 +1,8 @@
 import os
-from importlib_resources import files
+try:
+    from importlib.resources import files
+except:
+    from importlib_resources import files
 
 def _checkload_root_file(path):
     """Check if root path file exists and read file contents"""
