@@ -1,5 +1,6 @@
 from simim.galprops import Prop, MultiProp
-from simim.galprops import line_co, line_densegas, line_fir, sfr_behroozi13
+from simim.galprops import line_co, line_densegas, line_fir, line_fir_yang
+from simim.galprops import sfr_behroozi13
 
 # Pre-defined line luminosities
 prop_co_sled = MultiProp(prop_names=['L10','L21','L32','L43','L54','L65','L76','L87','L98','L109','L1110','L1211','L1312'],
@@ -47,7 +48,7 @@ prop_schaerer_cii = Prop(prop_name='LCII',
     kwargs=['sfr'],units='Lsun',h_dependence=0)
 
 prop_yang_cii = Prop(prop_name='LCII',
-    prop_function=line_fir.yang22,
+    prop_function=line_fir_yang.yang22,
     kwargs=['mass','redshift'],units='Lsun',h_dependence=0)
 
 prop_padmanabhan_cii = Prop(prop_name='LCII',

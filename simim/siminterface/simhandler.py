@@ -182,8 +182,8 @@ class SimHandler():
 
         # Set up a place to keep the data
         paths = _SimIMPaths()
-        if sim in paths.sims():
-            self.path = paths.sim[sim]
+        if sim in paths.sims:
+            self.path = paths.sims[sim]
         else:
             raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
         self.sim = sim
@@ -519,6 +519,7 @@ class SimHandler():
 
                 handler.write_property(*names,overwrite=overwrite,dtype=writedtype)
                 handler.unload_property(*names)
+        print("")
 
     def delete_property(self,*property_names):
         """Remove a property from the saved file on the disk for all simulation snapshots

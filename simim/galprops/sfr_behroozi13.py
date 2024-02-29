@@ -30,22 +30,26 @@ class behroozi13_base():
 
         # Check paths
         paths = _SimIMPaths()
-        if 'behroozi13' not in paths.props:
-            paths._newproppath('behroozi13')
-        self.path = paths.props['behroozi13']
+        if paths.root is not None:
+            if 'behroozi13' not in paths.props:
+                paths._newproppath('behroozi13')
+            self.path = paths.props['behroozi13']
 
-        # Make required files if needed
-        if not os.path.exists(os.path.join(self.path,'sfr.npy')):
-            self._make_spline_files()
+            # Make required files if needed
+            if not os.path.exists(os.path.join(self.path,'sfr.npy')):
+                self._make_spline_files()
 
-        # Load spline stuff
-        self.grid_mass = np.load(os.path.join(self.path,'mass_axis.npy'))
-        self.grid_redshift = np.load(os.path.join(self.path,'redshift_axis.npy'))
-        grid_sfr = np.load(os.path.join(self.path,'sfr.npy')).T
-        grid_stellar = np.load(os.path.join(self.path,'stellarmass.npy')).T
+            # Load spline stuff
+            self.grid_mass = np.load(os.path.join(self.path,'mass_axis.npy'))
+            self.grid_redshift = np.load(os.path.join(self.path,'redshift_axis.npy'))
+            grid_sfr = np.load(os.path.join(self.path,'sfr.npy')).T
+            grid_stellar = np.load(os.path.join(self.path,'stellarmass.npy')).T
 
-        self.sfr_function = RectBivariateSpline(self.grid_redshift,self.grid_mass,grid_sfr,kx=1,ky=1)
-        self.stellarmass_function = RectBivariateSpline(self.grid_redshift,self.grid_mass,grid_stellar,kx=1,ky=1)
+            self.sfr_function = RectBivariateSpline(self.grid_redshift,self.grid_mass,grid_sfr,kx=1,ky=1)
+            self.stellarmass_function = RectBivariateSpline(self.grid_redshift,self.grid_mass,grid_stellar,kx=1,ky=1)
+
+        else:
+            self.path = None
 
     def _make_spline_files(self):
         """Generate the needed files from the distribution data from
@@ -53,7 +57,7 @@ class behroozi13_base():
         """
 
         simim_path = files('simim')
-        path = simim_path.joinpath('resources','behroozi13_release.data')
+        path = simim_path.joinpath('resources','behroozi13_release.dat')
         data = np.loadtxt(path,
                           dtype=[('redshift','f'),('mass','f'),('sfr','f'),('stellarmass','f')])
 
@@ -150,6 +154,9 @@ class behroozi13_base():
             The assigned SFRs in Msun/yr
         """
 
+        if self.path is None:
+            return ValueError("model setup not complete - make sure setupsimim has been run")
+
         if np.any(redshift > np.amax(self.grid_redshift)) and self.warn:
             warnings.warn('redshift exceeds maximum in Behroozi model range')
         if np.any(mass > np.amax(self.grid_mass)) and self.warn:
@@ -187,6 +194,9 @@ class behroozi13_base():
             The assigned stellar mass in Msun
         """
 
+        if self.path is None:
+            return ValueError("model setup not complete - make sure setupsimim has been run")
+
         if np.any(redshift > np.amax(self.grid_redshift)) and self.warn:
             warnings.warn('redshift exceeds maximum in Behroozi model range')
         if np.any(mass > np.amax(self.grid_mass)) and self.warn:
@@ -201,5 +211,54 @@ class behroozi13_base():
         return stellarmassval
 
 # Aliases to make the required functions easy to access
-sfr = behroozi13_base().sfr
-stellarmass = behroozi13_base().stellarmass
+base = behroozi13_base()
+
+def sfr(redshift, mass, scatter=True, sigma_scatter=0.3, rng=np.random.default_rng()):
+        """Function to assign star formation rates based on the model
+        from Behroozi et al. 2013.
+
+        Parameters
+        ----------
+        redshift : float or array
+            The redshift(s) of the halo(s)
+        mass : float or array
+            The mass(es) of the halo(s) in Msun
+        scatter : bool
+            If True, a lognormal scatter will be added around the mean SFR
+            assigned. Default is True
+        sigma_scatter : float
+            The scatter, in dex, to add around the mean. Default is 0.3
+        rng : optional, numpy.random.Generator object
+            Can be used to specify an rng, useful if you want to control the seed
+
+        Returns
+        -------
+        sfr : float or array
+            The assigned SFRs in Msun/yr
+        """
+        
+        return base.sfr(redshift=redshift, mass=mass, scatter=scatter, sigma_scatter=sigma_scatter, rng=rng)
+def stellarmass(redshift, mass, scatter=True, sigma_scatter=0.3, rng=np.random.default_rng()):
+        """Function to assign stellar masses based on the model
+        from Behroozi et al. 2013.
+
+        Parameters
+        ----------
+        redshift : float or array
+            The redshift(s) of the halo(s)
+        mass : float or array
+            The mass(es) of the halo(s) in Msun
+        scatter : bool
+            If True, a lognormal scatter will be added around the mean SFR
+            assigned. Default is True
+        sigma_scatter : float
+            The scatter, in dex, to add around the mean. Default is 0.3
+        rng : optional, numpy.random.Generator object
+            Can be used to specify an rng, useful if you want to control the seed
+
+        Returns
+        -------
+        stellar : float or array
+            The assigned stellar mass in Msun
+        """
+        return base.stellarmass(redshift=redshift, mass=mass, scatter=scatter, sigma_scatter=sigma_scatter, rng=rng)

@@ -1,2 +1,3 @@
 # Preload modules
-from . import galprops
+from .galprops import Prop, MultiProp
+from .galprops_builtin import *
