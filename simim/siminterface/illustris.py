@@ -4,11 +4,11 @@ import warnings
 
 import numpy as np
 
-from simim.siminterface import illustris_datahandling as idh
-from simim.siminterface._rawsiminterface import sim_catalogs, snapshot
+from simim.siminterface import _illustris_datahandling as idh
+from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
 
-class illustris_catalogs(sim_catalogs):
+class IllustrisCatalogs(SimCatalogs):
     """Class to download and format Illustris or TNG group catalogs"""
 
     def __init__(self,
@@ -45,7 +45,6 @@ class illustris_catalogs(sim_catalogs):
             default path to this simulation in future uses.
         """
         
-
         # Figure out the snapshots needed
         if sim[:3] == 'Ill':
             self.allsnaps = np.arange(136)
@@ -58,7 +57,7 @@ class illustris_catalogs(sim_catalogs):
             self.allsnaps =  np.arange(100)
 
         # Initialize catalog
-        sim_catalogs.__init__(self,sim, path, snaps, updatepath)
+        SimCatalogs.__init__(self,sim, path, snaps, updatepath)
 
         self.api_key = api_key
 
@@ -307,11 +306,11 @@ class illustris_catalogs(sim_catalogs):
             self.raw_fname = 'fof_subhalo_tab_'
 
     # Function to load the data in a format we want:
-    def loader(self, path, snapshot, fields):
+    def _loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog
 
         This is promarily meant for internal use by the .format method
-        of the sim_catalogs class
+        of the SimCatalogs class
         
         Parameters
         ----------
@@ -335,7 +334,7 @@ class illustris_catalogs(sim_catalogs):
         n_halos = subhalos.pop('count')
         return subhalos, n_halos
 
-    def get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfile(self, snapshot):
         """Get path to a snapshot's raw file"""
         return os.path.join('groups_{:03d}'.format(snapshot))
 
@@ -400,12 +399,12 @@ class illustris_catalogs(sim_catalogs):
         
         Note: the metadata saved is dependent on the list of snapshots,
         therefore if you plan to use many snapshots for some applications
-        but have for some reason only initialized your illustris_catalogs
+        but have for some reason only initialized your IllustrisCatalogs
         instance with a few it is probably best to do something like the 
         following:
-            >>> x = illustris_catalogs(...,snaps='all')
+            >>> x = IllustrisCatalogs(...,snaps='all')
             >>> x.download_meta()
-            >>> x = illustris_catalogs(...,snaps=[10,11,12])
+            >>> x = IllustrisCatalogs(...,snaps=[10,11,12])
             >>> x.download()
         """
 
@@ -453,7 +452,7 @@ class illustris_catalogs(sim_catalogs):
         snap_meta_classes = []
         numbers = []
         for i in snap_meta_raw:
-            snap_meta_classes.append(snapshot(i['number'],i['redshift'],self.metadata))
+            snap_meta_classes.append(Snapshot(i['number'],i['redshift'],self.metadata))
             numbers.append(i['number'])
         snap_meta_classes = [snap_meta_classes[i] for i in np.argsort(numbers)]
         
@@ -490,3 +489,7 @@ class illustris_catalogs(sim_catalogs):
 
         np.save(self.meta_path,self.metadata)
         np.save(self.snap_meta_path,self.snap_meta)
+
+def illustris_catalogs(*args, **kwargs):
+    warnings.warn("illustris_catalogs is depricated, use IllustrisCatalogs instead")
+    return IllustrisCatalogs(*args, **kwargs)

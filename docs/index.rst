@@ -6,39 +6,37 @@
 Documenation for SimIM
 ======================
 
-These pages contain documentation for the SimIM software for
-simulating the extragalactic sky in radio, sub-millimeter, and 
-far-infrared. 
-
+These pages contain documentation for SimIM a Python package for simulating the
+extragalactic sky in radio, sub-millimeter, and far-infrared. 
 
 .. toctree::
    :caption: Getting Started
-   :maxdepth: 2
+   :maxdepth: 3
 
    installation
+
    notebooks/getting_data
+   notebooks/interacting_with_sims
    notebooks/first_look
-
-.. toctree::
-   :caption: Simulation Interface
-
-.. toctree::
-   :caption: Galaxy Properties
-
-.. toctree::
-   :caption: Light Cones
-
-.. toctree::
-   :caption: Maps and Cubes
-
-.. toctree::
-   :caption: Power Spectra
 
 .. toctree::
    :caption: More Examples
 
 .. toctree::
-   :caption: API
-   :maxdepth: 5
+   :caption: Simulation Interface
+   :maxdepth: 3
 
-   api
+   api_siminterface
+
+.. toctree::
+   :caption: Galaxy Properties
+   :maxdepth: 3
+
+   api_galprops
+
+
+.. toctree::
+   :caption: To Do
+   :maxdepth: 3
+
+   api_todo

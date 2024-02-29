@@ -1,0 +1,67 @@
+### PHYSICAL CONSTANTS ###
+# All in SI units
+c = 2.99792458e8 # m s^-1; speed of light
+kB = 1.3806e-23 # m^2 kg s^-2 K^-1; boltzmann constant
+
+### UNIT CONVERSION ###
+Lsun_to_W = 3.828e26
+Mpc_to_m = 3.0857e22
+
+### FREQUENCIES FOR VARIOUS SPECTRAL LINES ###
+# All values come from Splatalogue and are given in Hz.
+
+nu_co10 = 115.27120180e9
+nu_co21 = 230.53800000e9
+nu_co32 = 345.79598990e9
+nu_co43 = 461.04076820e9
+nu_co54 = 576.26793050e9
+nu_co65 = 691.47307630e9
+nu_co76 = 806.65180600e9
+nu_co87 = 921.79970000e9
+nu_co98 = 1036.91239300e9
+nu_co10to9 = 1151.98545200e9
+nu_co11to10 = 1267.01448600e9
+nu_co12to11 = 1381.99510500e9
+nu_co13to12 = 1496.92290900e9
+
+nu_co_iso13c_10 = 110.20135430e9
+nu_co_iso13c_21 = 220.39868420e9
+nu_co_iso13c_32 = 330.58796530e9
+nu_co_iso13c_43 = 440.76517350e9
+nu_co_iso13c_54 = 550.92628510e9
+nu_co_iso13c_65 = 661.06727660e9
+nu_co_iso13c_76 = 771.18412500e9
+nu_co_iso13c_87 = 881.27280800e9
+nu_co_iso13c_98 = 991.32930500e9
+nu_co_iso13c_10to9 = 1101.34959710e9
+
+# FROM SPLATALOGUE - MULTIPE F LEVELS PER LINE
+nu_hcn10 = 88.63e9
+nu_hcn21 = 177.26e9
+nu_hcn32 = 265.88618000e9
+nu_hcn43 = 354.50547590e9
+nu_hcn54 = 443.11615540e9
+nu_hcn65 = 531.71638750e9
+nu_hcn76 = 620.30409520e9
+nu_hcn87 = 708.87720810e9
+nu_hcn98 = 797.433663800e9
+nu_hcn10to9 = 885.97140870e9
+
+# FROM SPLATALOGUE
+nu_cs10 = 48.99095490e9
+nu_cs21 = 97.98095330e9
+nu_cs32 = 146.96902870e9
+nu_cs43 = 195.95421090e9
+nu_cs54 = 244.93555650e9
+nu_cs65 = 293.91208650e9
+nu_cs76 = 342.88285030e9
+nu_cs87 = 391.84688980e9
+nu_cs98 = 440.80323200e9
+nu_cs10to9 = 489.75092100e9
+
+# FROM SPLATALOGUE
+nu_cii = 1900.53690000e9
+nu_nii205 = 1461.13140620e9
+nu_nii121 = 2459.38010085e9
+nu_oiii88 = 3393.00624400e9
+nu_oiii51 = 5785.87958900e9

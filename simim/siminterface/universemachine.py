@@ -7,10 +7,10 @@ import requests
 
 import numpy as np
 
-from simim.siminterface._rawsiminterface import sim_catalogs, snapshot
+from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
 
-class universemachine_catalogs(sim_catalogs):
+class UniversemachineCatalogs(SimCatalogs):
     def __init__(self,
                  sim, path='auto',
                  snaps='all',
@@ -49,13 +49,13 @@ class universemachine_catalogs(sim_catalogs):
         self.web_path = os.path.join(self.path, 'web_paths.npy')
         if self.sim == 'UniverseMachine-BolshoiPlanck':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/SFR_ASCII/'
-            self.loader = self.ascii_loader
+            self._loader = self._ascii_loader
         elif self.sim == 'UniverseMachine-SMDPL':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/SMDPL_SFR/'
-            self.loader = self.bin_loader
+            self._loader = self._bin_loader
         elif self.sim == 'UniverseMachine-MDPL2':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/MDPL2_SFR/'
-            self.loader = self.bin_loader
+            self._loader = self._bin_loader
 
         if os.path.exists(self.web_path):
             self.web_files = np.load(self.web_path)
@@ -187,12 +187,12 @@ class universemachine_catalogs(sim_catalogs):
 
     # Functions to load the data in a format we want:
     # Fields to ignore: flags, uparent_dist, rank2, ra, rarank
-    def ascii_loader(self, path, snapshot, fields):
+    def _ascii_loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog - for ascii formatted
         UM data
 
         This is promarily meant for internal use by the .format method
-        of the sim_catalogs class
+        of the SimCatalogs class
         
         Parameters
         ----------
@@ -225,12 +225,12 @@ class universemachine_catalogs(sim_catalogs):
 
         return subhaols, n_halos
 
-    def bin_loader(self, path, snapshot, fields):
+    def _bin_loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog - for binary formatted
         UM data
 
         This is promarily meant for internal use by the .format method
-        of the sim_catalogs class
+        of the SimCatalogs class
         
         Parameters
         ----------
@@ -272,7 +272,7 @@ class universemachine_catalogs(sim_catalogs):
 
         return subhalos, n_halos
 
-    def get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfile(self, snapshot):
         """Get path to a snapshot's raw file"""
         return self.web_files[snapshot]
 
@@ -282,15 +282,15 @@ class universemachine_catalogs(sim_catalogs):
         
         Note: the metadata saved is dependent on the list of snapshots,
         therefore if you plan to use many snapshots for some applications
-        but have for some reason only initialized your illustris_catalogs
+        but have for some reason only initialized your IllustrisCatalogs
         instance with a few it is probably best to do something like the 
         following:
-            >>> x = universemachine_catalogs(...,snaps='all')
+            >>> x = UniversemachineCatalogs(...,snaps='all')
             >>> x.download_meta()
-            >>> x = universemachine_catalogs(...,snaps=[10,11,12])
+            >>> x = UniversemachineCatalogs(...,snaps=[10,11,12])
             >>> x.download()
         """
-
+        
         # Check that metadata doesn't already exist
         if not redownload:
             if os.path.exists(self.meta_path):
@@ -330,7 +330,7 @@ class universemachine_catalogs(sim_catalogs):
 
         snap_meta_classes = []
         for i in range(self.metadata['number_snaps']):
-            snap_meta_classes.append(snapshot(i,redshifts[i],self.metadata))
+            snap_meta_classes.append(Snapshot(i,redshifts[i],self.metadata))
 
         snap_meta_classes = [snap_meta_classes[i] for i in numbers if i in self.snaps]
 
@@ -392,3 +392,8 @@ class universemachine_catalogs(sim_catalogs):
             print("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
             file_path = os.path.join(self.path,'raw',self.web_files[snap])
             urlretrieve(self.webpage+self.web_files[snap],file_path)
+
+# Wrapper for back compatibility
+def universemachine_catalogs(*args, **kwargs):
+    warnings.warn("universemachine_catalogs is depricated, use UniversemachineCatalogs instead")
+    return UniversemachineCatalogs(*args, **kwargs)

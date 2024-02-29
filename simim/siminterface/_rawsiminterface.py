@@ -7,11 +7,11 @@ import astropy.units as u
 import h5py
 import numpy as np
 
-from simim import _paths
+from simim._paths import _SimIMPaths
 from simim.siminterface._sims import _checksim
 
 
-class snapshot():
+class Snapshot():
     """Class containing information for individual snapshots
     
     This class stores information and does some basic calculations
@@ -130,7 +130,7 @@ class snapshot():
 #    -- dataset:
 #         note: mass units - Msun/h, lenghth units Mpc/h, time units Gyr/h
 
-class sim_catalogs():
+class SimCatalogs():
     """Generic class for interacting with simulation halo catalogs and
     converting them into SimIM's preferred format.
     
@@ -139,12 +139,12 @@ class sim_catalogs():
     illustris.py, and universemachine.py show how to do this for two
     examples.
 
-    To construct a new sim_catalog subclass, a few steps are necessary.
+    To construct a new SimCatalogs subclass, a few steps are necessary.
     1. Define the __init__ method: this method should first create an array
     self.allsnaps, which contains the number-index of every snap in the
     orignial simulation. __init__ should then call
-    sim_catalogs.__init__ with the relevant arguments (see Parameters 
-    for the sim_catalogs.__init__ method). Then it should construct three 
+    SimCatalogs.__init__ with the relevant arguments (see Parameters 
+    for the SimCatalogs.__init__ method). Then it should construct three 
     dictionaries that define the field names in the unformatted
     halo catalog files and how these names map to fields in the SimIM data
     structure. 
@@ -215,7 +215,7 @@ class sim_catalogs():
     self.snap_meta_path. Look at existing code for examples of how to do
     this.
 
-    3. The extended class needs a self.loader which takes as arguments the
+    3. The extended class needs a self._loader which takes as arguments the
     path to the data, a snapshot number, and a list of fields and returns
     a dictionary containing key-value pairs of the property name and the 
     values for every halo of the property, along with an integer specifying
@@ -253,13 +253,13 @@ class sim_catalogs():
         self.sim = sim
 
         # Set up a place to keep the data
-        paths = _paths._paths()
+        paths = _SimIMPaths()
         if path == 'auto':
-            if self.sim in paths.paths.keys():
-                self.path = paths.paths[self.sim]
+            if self.sim in paths.sims:
+                self.path = paths.sims[self.sim]
             else:
                 paths._newsimpath(self.sim)
-                self.path = paths.paths[self.sim]
+                self.path = paths.sims[self.sim]
         else:
             if not os.path.exists(path):
                 raise NameError("Specified path not found")
@@ -310,11 +310,11 @@ class sim_catalogs():
 
         # Initialize a function to get halos - this must be modified when
         # creating the actual class, it's here as a template
-        # def loader(path, snapshot, fields):
+        # def _loader(path, snapshot, fields):
         #     subhalos = {'anykey':[]}
         #     n_halos = len(subhalos['anykey'])
         #     return subhalos, n_halos
-        # self.loader = loader
+        # self._loader = _loader
 
     def clean_raw(self):
         """Remove unformatted data for a simulation
@@ -344,7 +344,7 @@ class sim_catalogs():
         SimIM for all halo catalogs.
         
         This method makes a data.hdf5 file containing the formatted data for the snapshots
-        pointed to in the sim_catalogs instance. If a file already exists, it will
+        pointed to in the SimCatalogs instance. If a file already exists, it will
         be added to, not overwritten (i.e. snapshots already present in data.hdf5 won't be
         reformatted/replaced, but those not present will be added). By setting remake=True
         the whole file can be overwritten. By setting overwrite=True snaps present in 
@@ -364,10 +364,10 @@ class sim_catalogs():
         ----------
         remake : bool, default=False
             If True, a new file will be created (overwriting any data.hdf5 file that previously
-            existed) and the snaps listed in the sim_catalogs instance will be written to it.
+            existed) and the snaps listed in the SimCatalogs instance will be written to it.
             If False, only new data will be added.
         overwrite : bool, default=False
-            If True, snaps already present in the data.hdf5 file but also listed in the sim_catalogs 
+            If True, snaps already present in the data.hdf5 file but also listed in the SimCatalogs 
             instance will be written over with newly formatted versions. If False, the versions alreay
             in data.hdf5 will be left untouched
         basic : bool, default=False
@@ -406,7 +406,7 @@ class sim_catalogs():
                 if len(file.keys())>0:
                     pathhassnaps = True
 
-        # Case 1 - create new file, save all snapshots in simhandler to it
+        # Case 1 - create new file, save all snapshots in SimHandler to it
         if not pathexists or remake or not pathhassnaps:
             snaps_to_do = self.snaps
             if basic:
@@ -466,7 +466,7 @@ class sim_catalogs():
             print("Formatting snap {}".format(snap))
 
             # Load stuff in from original file formats
-            subhalos, n_halos = self.loader(path=os.path.join(self.path,'raw',''), snapshot=snap, fields=self.all_fields.keys())
+            subhalos, n_halos = self._loader(path=os.path.join(self.path,'raw',''), snapshot=snap, fields=self.all_fields.keys())
 
             # Format values
             if n_halos > 0:
@@ -573,7 +573,7 @@ class sim_catalogs():
             
             # Delete raw data if requested
             if realtime_clean_raw:
-                file_path = os.path.join(self.path,'raw',self.get_rawsnapfile(snap))
+                file_path = os.path.join(self.path,'raw',self._get_rawsnapfile(snap))
                 os.system("rm -r {}".format(file_path))
 
 
