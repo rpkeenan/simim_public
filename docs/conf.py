@@ -37,6 +37,7 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+nbsphinx_execute = 'never' # Never execute Jupyter notebooks when compiling docs
 
 
 # -- Options for HTML output -------------------------------------------------
