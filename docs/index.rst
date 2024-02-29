@@ -17,7 +17,6 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
 
    notebooks/getting_data
    notebooks/interacting_with_sims
-   notebooks/first_look
 
 .. toctree::
    :caption: More Examples
@@ -33,10 +32,3 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    :maxdepth: 3
 
    api_galprops
-
-
-.. toctree::
-   :caption: To Do
-   :maxdepth: 3
-
-   api_todo

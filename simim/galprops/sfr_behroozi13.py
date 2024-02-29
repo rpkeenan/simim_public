@@ -1,6 +1,9 @@
 import os
 import warnings
-from importlib_resources import files
+try:
+    from importlib.resources import files
+except:
+    from importlib_resources import files
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
