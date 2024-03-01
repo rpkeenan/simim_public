@@ -4,7 +4,7 @@ from ._paths import setupsimim
 # Make main modules accessible
 from . import siminterface
 from . import galprops
-# from . import lightcone
+from . import lightcone
 from . import map
 # from . import inst
 
