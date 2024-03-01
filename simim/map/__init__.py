@@ -1,3 +1,4 @@
+from .gridder import Grid
 from .gridder import Gridder
 from .gridder import LoadGrid
 from .gridder import gridder_function

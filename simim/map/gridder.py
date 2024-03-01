@@ -18,7 +18,7 @@ def _axis_edges(ax):
     """Given bin centers (ax) along an axis return the bin edges"""
     diff = np.diff(ax)
     newax = ax[:-1] + diff
-    newax = np.concatenate((ax[0]-diff[0]/2, newax, ax[-1]+diff[-1]/2))
+    newax = np.concatenate(([ax[0]-diff[0]/2], newax, [ax[-1]+diff[-1]/2]))
     return newax
     
     # delta = np.mean(np.abs(np.diff(ax)))
@@ -172,7 +172,7 @@ class Grid():
         if np.any(n_pixels_decimal != n_pixels_ceil):
             self.side_length = self.pixel_size * n_pixels_ceil
             if (not side_length is None) and (not center_point is None):
-                warnings.warn("Side lengths adjusted to accomodate integer number of pixels")
+                warnings.warn("Side lengths increased to accomodate integer number of pixels")
         self.n_pixels = n_pixels_ceil.astype('int')
 
         self.axes = []
@@ -264,7 +264,7 @@ class Grid():
 
         pad = np.array(pad,ndmin=1).astype(int)
         if len(pad) == 1 and len(ax)>1:
-            pad = np.ones(len(ax))*pad[0]
+            pad = np.ones(len(ax),dtype=int)*pad[0]
         elif len(pad) != len(ax):
             raise ValueError("length of ax ({}) and pad ({}) must match".format(len(ax),len(pad)))
         
@@ -342,8 +342,8 @@ class Grid():
     def crop(self,ax,min=None,max=None):
         """Crop a single grid axis to a specified range of values
 
-        Note that this will only work on axes which are represented in 
-        physical (not Fourier) space
+        Note that this will only work on axes which are represented in physical
+        (not Fourier) space
         
         Parameters
         ----------
@@ -352,12 +352,12 @@ class Grid():
             axis of the grid (so for a 3d grid 0, 1, or 2 are valid inputs).
         min : float (optional)
             Minimum value along the axis that will be kept. If none is specified
-            the lower end of the grid will not be cropped. Only cells that fall
-            completely above the value of min are kept.
+            the lower end of the grid will not be cropped. Only cells where the
+            cener lies above the value of min are kept.
         max : float (optional)
             Maximum value along the axis that will be kept. If none is specified
-            the upper end of the grid will not be cropped. Only cells taht fall
-            completely below the value of max are kept.
+            the upper end of the grid will not be cropped. Only cells where the
+            center lies below the value of max are kept.
         """
     
         # Still need to sort out how to set up new axes
@@ -2034,7 +2034,7 @@ class GridFromAxes(Grid):
         if np.any(n_pixels_decimal != n_pixels_ceil):
             self.side_length = self.pixel_size * n_pixels_ceil
             if (not side_length is None) and (not center_point is None):
-                warnings.warn("Side lengths adjusted to accomodate integer number of pixels")
+                warnings.warn("Side lengths increased to accomodate integer number of pixels")
         self.n_pixels = n_pixels_ceil.astype('int')
 
 class GridFromAxesAndFunction(GridFromAxes):
