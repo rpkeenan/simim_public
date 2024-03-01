@@ -32,3 +32,20 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    :maxdepth: 3
 
    api_galprops
+
+.. toctree::
+   :caption: Ligth Cones
+   :maxdepth: 3
+
+   api_lightcone
+
+.. toctree::
+   :caption: Maps, Grids, Spectral Cubes, Power Spectra
+   :maxdepth: 3
+
+   api_map
+
+.. toctree::
+   :caption: Development
+
+   plans
