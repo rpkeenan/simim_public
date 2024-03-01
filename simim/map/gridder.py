@@ -1981,13 +1981,34 @@ class SpectralPSF(Grid):
 
 
 ###############################################################################
-##### SECTION 3: Work in progress #############################################
+##### SECTION 3: More Ways to Create Grids ####################################
 ###############################################################################
 
-# Add some checks to ensure the desired axes are reproduced correctly
-# Can be used as the basis for a much more generic set of PSFs
 class GridFromAxes(Grid):
     def __init__(self,*axes,n_properties=1,axunits=None,gridunits=None):
+        """Initialize a Grid from a set of axes
+        
+        Create a grid by specifying the axes. Each axis given should
+        be an array specifying the edges of the desired grid cells along
+        that dimension.
+
+        Parameters
+        ----------
+        *axes : array
+            One or more arrays of evenly spaced numbers describing the 
+            edgeds of each grid cell in one dimension.
+        n_properties : int >= 1 (optional)
+            The number of properties which will be stored in the grid. Note this
+            number can be increased later.
+        axunits : str or tuple of str (optional)
+            A string or tuple of strings specifying the units of the spatial
+            axes.
+        gridunits : str or tuple of str (optional)
+            A string or tuple of strings specifying the units of the grid values.
+            A single value can be specified, or one value can be provided for 
+            each property, in which case the length of the tuple should equal
+            n_properties.
+        """
 
         center_point = []
         side_length = []
@@ -2016,9 +2037,42 @@ class GridFromAxes(Grid):
                 warnings.warn("Side lengths adjusted to accomodate integer number of pixels")
         self.n_pixels = n_pixels_ceil.astype('int')
 
-class GridFromAxesAndFunction(grid_from_axes):
+class GridFromAxesAndFunction(GridFromAxes):
     def __init__(self,function,*axes,function_kwargs={},n_properties=1,axunits=None,gridunits=None):
+        """Initialize a Grid from a set of axes and populate it using a function
+        the axes
+        
+        Create a grid by specifying the axes. Each axis given should be an array
+        specifying the edges of the desired grid cells along that dimension. A
+        function which takes the axis centers (determined as the midpoints along
+        the specified axis edges) as arguments and returns an array is then used
+        to populate the grid.
 
+        Parameters
+        ----------
+        function : function
+            Function that will be used to populate the grid. This should take as
+            arguments an arbitrary number of arrays (or a number of arrays equal
+            to the number of axes specified) and return an array of shape (n1,
+            n2, ... ni).
+        *axes : array
+            One or more arrays of evenly spaced numbers describing the edgeds of
+            each grid cell in one dimension.
+        function_kwargs : dict (optional)
+            Dictionary containing additional keyword arguments to pass when
+            calling function.
+        n_properties : int >= 1 (optional)
+            The number of properties which will be stored in the grid. Note this
+            number can be increased later.
+        axunits : str or tuple of str (optional)
+            A string or tuple of strings specifying the units of the spatial
+            axes.
+        gridunits : str or tuple of str (optional)
+            A string or tuple of strings specifying the units of the grid
+            values. A single value can be specified, or one value can be
+            provided for each property, in which case the length of the tuple
+            should equal n_properties.
+        """
         super().__init__(*axes,n_properties=n_properties,axunits=axunits,gridunits=gridunits)
         self.init_grid()
         shape = self.grid.shape
