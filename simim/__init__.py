@@ -5,7 +5,7 @@ from ._paths import setupsimim
 from . import siminterface
 from . import galprops
 # from . import lightcone
-# from . import map
+from . import map
 # from . import inst
 
 # Make constants easily accessible
