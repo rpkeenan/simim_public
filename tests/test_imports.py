@@ -33,3 +33,12 @@ def test_import_map():
     resources = dir(simim.map)
     for check_resource in ['Grid','Gridder','LoadGrid','GridFromAxes','GridFromAxesAndFunction','PSF','SpectralPSF','gridder_function',]:
         assert check_resource in resources
+
+def test_import_map():
+    """Make sure the expected files are imported - simim.lightcone"""
+
+    import simim.lightcone
+
+    resources = dir(simim.lightcone)
+    for check_resource in ['LCMaker','LCHandler']:
+        assert check_resource in resources
