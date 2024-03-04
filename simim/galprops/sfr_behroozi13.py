@@ -100,6 +100,7 @@ class behroozi13_base():
         np.save(os.path.join(self.path,'mass_axis.npy'),mass)
         np.save(os.path.join(self.path,'redshift_axis.npy'),redshift)
 
+    @pltdeco
     def plot_grid(self,prop='sfr'):
         """Plot the grid.
 

@@ -9,19 +9,17 @@ import astropy.units as u
 
 from simim._paths import _SimIMPaths
 from simim._handlers import Handler
-# from simim.map import gridder
+from simim.map import Gridder
 from simim.siminterface._sims import _checksim
 
 class SnapHandler(Handler):
     """Handler for individual snapshots - see generic Handler
     documentation. 
     
-    The simplest way to initialize a SnapHandler instance is
-    probably via a SimHandler instance for the simulation 
-    containing the snapshot in question. Then the method 
-    SimHandler.get_snap will return a Handler instance for 
-    the snapshot with only the snapshot index-number 
-    specified.
+    The simplest way to initialize a SnapHandler instance is probably via a
+    SimHandler instance for the simulation containing the snapshot in question.
+    Then the method SimHandler.get_snap will return a Handler instance for the
+    snapshot with only the snapshot index-number specified.
     """
 
     def __init__(self,path,snap,redshift,cosmo,box_edge):
@@ -30,18 +28,16 @@ class SnapHandler(Handler):
         Parameters
         ----------
         path : string
-            Path to SimIM formatted file containing the snapshot
-            (most likely .../[Simulation Name]/data.hdf5)
+            Path to SimIM formatted file containing the snapshot (most likely
+            [path to SimIM data directory]/[Simulation Name]/data.hdf5)
         snap : int
             Index-number of the snapshot within the whole simulation
         redshift : float
             Redshift at which the snapshot was taken
         cosmo : dict
-            Dictionary containing the cosmological parameters for the 
-            simulation
+            Dictionary containing the cosmological parameters for the simulation
         box_edge : float
-            The edge length of the simulation box, should be in units 
-            of Mpc/h.
+            The edge length of the simulation box, should be in units of Mpc/h.
         """
 
         super().__init__(path,objectname='Snapshot',groupname='Snapshot {}'.format(snap))
@@ -97,9 +93,6 @@ class SnapHandler(Handler):
             The gridded properties
         """
 
-### Fix this once maps is implemented
-        raise ValueError("simim version does not support gridding")
-
         x = self.return_property('pos_x',in_h_units=in_h_units,use_all_inds=use_all_inds)
         y = self.return_property('pos_y',in_h_units=in_h_units,use_all_inds=use_all_inds)
         z = self.return_property('pos_z',in_h_units=in_h_units,use_all_inds=use_all_inds)
@@ -126,7 +119,7 @@ class SnapHandler(Handler):
         if res is None:
             res = [x/100 for x in l]
 
-        grid = gridder(np.array([x, y, z]).T, props,
+        grid = Gridder(np.array([x, y, z]).T, props,
                        center_point=c, side_length=l,
                        pixel_size=res)
 
@@ -144,16 +137,15 @@ class SnapHandler(Handler):
 class SimHandler():
     """Class to handle I/O for subhalo/galaxy catalogs in SimIM format
     
-    This class handles basic operations for accessing and masking simulation
-    data. It is a wrapper around Handlers for individual snapshots, and
-    in many cases performs operations iteratively over all snapshots in 
-    a particular simulation. It is also a convenient wrapper for accessing
-    specific snapshots of a given simulation.
+    This class handles basic operations for accessing and analyzing simulation
+    data. It is a wrapper around Handlers for individual snapshots, and in many
+    cases performs operations iteratively over all snapshots in a particular
+    simulation. It is also a convenient wrapper for accessing specific snapshots
+    of a given simulation.
 
-    The general philosophy of Handlers is to not load actual properties of 
-    a halo into memory until they are requested, and to remove them from 
-    memory when they are no longer in use (or at least make it convenient
-    to do so).
+    The general philosophy of Handlers is to not load actual properties of a
+    halo into memory until they are requested, and to remove them from memory
+    when they are no longer in use (or at least make it convenient to do so).
     """
 
     def __init__(self,sim,init_snaps=False):

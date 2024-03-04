@@ -59,38 +59,6 @@ class _SimIMPaths():
             self.sims = _checkload_path_file(os.path.join(self.root,self.simpath_ext))
             self.props = _checkload_path_file(os.path.join(self.root,self.proppath_ext))
         
-        # # Path to the list of paths
-        # self.lc_file = simim_path.joinpath('resources','lcpaths.txt')
-        # self.path_file = simim_path.joinpath('resources','filepaths.txt')
-        # self.sfr_file = simim_path.joinpath('resources','sfrpaths.txt')
-
-        # # Load values, if they exist
-        # self.root = None
-        # if os.path.exists(self.root_file):
-        #     with open(self.root_file) as file:
-        #         self.root = file.readlines()[0].replace('\n','')
-
-        # self.paths = {}
-        # if os.path.exists(self.path_file):
-        #     with open(self.path_file) as file:
-        #         for line in file.readlines():
-        #             line_split = line.replace('\n','').split(' ')
-        #             self.paths[line_split[0]] = line_split[1]
-
-        # self.lightcones = {}
-        # if os.path.exists(self.lc_file):
-        #     with open(self.lc_file) as file:
-        #         for line in file.readlines():
-        #             line_split = line.replace('\n','').split(' ')
-        #             self.lightcones[line_split[0]] = line_split[1]
-
-        # self.sfrs = {}
-        # if os.path.exists(self.sfr_file):
-        #     with open(self.sfr_file) as file:
-        #         for line in file.readlines():
-        #             line_split = line.replace('\n','').split(' ')
-        #             self.sfrs[line_split[0]] = line_split[1]
-
     def _setuppath(self,root='~',confirm_with_user=False):
         """Create a directory root/simim_resources/simulations"""
 
