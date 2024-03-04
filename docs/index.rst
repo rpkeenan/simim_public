@@ -13,7 +13,7 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    :caption: Getting Started
    :maxdepth: 3
 
-   installation
+   doc_installation
 
    notebooks/getting_data
    notebooks/interacting_with_sims
@@ -44,8 +44,3 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    :maxdepth: 3
 
    api_map
-
-.. toctree::
-   :caption: Development
-
-   plans
