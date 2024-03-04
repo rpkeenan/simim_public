@@ -40,7 +40,7 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    api_lightcone
 
 .. toctree::
-   :caption: Maps, Grids, Spectral Cubes, Power Spectra
+   :caption: Grids, Maps, Spectral Cubes
    :maxdepth: 3
 
    api_map
