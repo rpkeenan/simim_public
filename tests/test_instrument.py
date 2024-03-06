@@ -3,9 +3,9 @@ import numpy as np
 
 from simim.instrument import Instrument
 from simim.map import Grid
-from simim.instrument.spec_response import gauss_response, boxcar_response
-from simim.instrument.psf import gauss_psf, gauss_psf_freq_dependent
-from simim.instrument.noise import white_noise, zero_noise
+from simim.instrument.spectral_response import gauss_response, boxcar_response
+from simim.instrument.spatial_response import gauss_psf, gauss_psf_freq_dependent
+from simim.instrument.noise_functions import white_noise, zero_noise
 
 # Tests for adding grids
 

@@ -23,7 +23,7 @@ def zero_noise(Nsamples: int, dt: float, rng=None):
     """
     return np.zeros(Nsamples)
 
-def white_noise(Nsamples,dt,rms=1,bias=0,rng=default_rng):
+def white_noise(Nsamples,dt,rms=1,bias=0,rng=None):
     """Function to generate white noise
     
     Generate white noise. Parameters should specify the timestep 

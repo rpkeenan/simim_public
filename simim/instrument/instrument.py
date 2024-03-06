@@ -7,9 +7,9 @@ from simim.map import Grid
 from simim.instrument.helpers import _check_unit, _check_grid_detector_compatibility, _specunit_type, _dict_none_copy
 
 
-from simim.instrument.noise import zero_noise, white_noise
-from simim.instrument.psf import gauss_psf, gauss_psf_freq_dependent
-from simim.instrument.spec_response import gauss_response, boxcar_response
+from simim.instrument.noise_functions import zero_noise, white_noise
+from simim.instrument.spatial_response import gauss_psf, gauss_psf_freq_dependent
+from simim.instrument.spectral_response import gauss_response, boxcar_response
 from simim.map import GridFromAxesAndFunction
 
 # Refactor Outline:
@@ -727,31 +727,34 @@ class Instrument:
 #         self.map_initialized = True
 
     def map_fields(self, 
-                   *fields: Grid,
+                   *field_names: Grid,
                    kernel_size: int = None,
                    spatial_response_norm: str = 'peak',
                    beam: Grid = None,
-                   pad: int = None,
-                   _check: bool = True):
-        
-        raise ValueError("Not implemented")
+                   pad: int = None):
+        """Generate maps of the specified fields based on instruemnt
+        response settings
+
+        Parameters
+        ----------
+        *field_names : str
+            One or more strings naming the fields to remove, if no names
+            are specified all fields will be mapped
+        """
+
         # Check detector_names
         if len(detector_names) == 0:
             detector_names = self.detector_names
     
 
 
-        self.maps_consistent[fieldname] = True
-
         # Either speciffy kernel_size and spatial_response_norm or specify beam (with a grid containing the beam)
         # Note that beams provided using beam will not be re-normalized.
+
         if beam is not None and kernel_size is not None:
             raise ValueError("If beam is specified, kernel_size should be left as None")
 
-        # Set off so it only has to be done once when an Instrument object iterates over many detectors
-        if _check:
-            if not self.field_initialized:
-                raise ValueError("No field specified - cannot map field")
+
 
         if beam is None:
             beam = self._setup_beam(kernel_size=None,spatial_response_norm=spatial_response_norm)
@@ -768,6 +771,12 @@ class Instrument:
         # Collapse along the third dimension using spectral response
         self.map = self.map.collapse_dimension(ax=2,weights=spec,mode='average',in_place=True)
         self.map_initialized = True
+
+
+
+        self.maps_consistent[fieldname] = True
+
+
 
 
     @pltdeco

@@ -1,4 +1,4 @@
 from .instrument import Instrument
-from .spec_response import *
-from .psf import *
-from .noise import *
+from .spectral_response import *
+from .spatial_response import *
+from .noise_functions import *
