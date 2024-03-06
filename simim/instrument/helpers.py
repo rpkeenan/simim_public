@@ -1,6 +1,6 @@
 import numpy as np
 import warnings
-from simim.map.gridder import _grid
+from simim.map import Grid
 
 def _check_shape(x):
     if not isinstance(x,np.ndarray):
@@ -16,9 +16,9 @@ def _check_shape(x):
     
     return x
 
-known_spectral_units = ['GHz','Hz','m','mm','um']
-known_spatial_units = ['rad','deg','arcmin','arcsec']
-known_flux_units = ['Jy','mJy']
+known_spectral_units = ['GHz','Hz','m','mm','um',None]
+known_spatial_units = ['rad','deg','arcmin','arcsec',None]
+known_flux_units = ['Jy','mJy',None]
 def _check_unit(unit,axtype):
     if axtype == 'spectral':
         known_units = known_spectral_units
@@ -33,7 +33,7 @@ def _check_unit(unit,axtype):
         raise ValueError("{} axis unit '{}' not recognized".format(axtype,unit))
 
 def _check_grid_detector_compatibility(detector,grid,field_property_idx):
-    if not isinstance(grid,_grid):
+    if not isinstance(grid,Grid):
         raise ValueError("Must specify an simim grid object for mapping")
     if not grid.grid_active:
         raise ValueError("Specified grid does not contain data")
@@ -46,6 +46,8 @@ def _check_grid_detector_compatibility(detector,grid,field_property_idx):
     # Convert any units that need converting
     if grid.axunits[0] is None:
         warnings.warn("Grid unit for x axis not specified. Assuming it matches detector spatial unit")
+    elif detector.spatial_unit is None:
+        warnings.warn("Detector unit for spatial dimension not specified. Assuming it matches grid unit")
     else:
         try: 
             _check_unit(grid.axunits[0],'spatial')
@@ -56,6 +58,8 @@ def _check_grid_detector_compatibility(detector,grid,field_property_idx):
 
     if grid.axunits[1] is None:
         warnings.warn("Grid unit for y axis not specified. Assuming it matches detector spatial unit")
+    elif detector.spatial_unit is None:
+        warnings.warn("Detector unit for spatial dimension not specified. Assuming it matches grid unit")
     else:
         try: 
             _check_unit(grid.axunits[1],'spatial')
@@ -66,6 +70,8 @@ def _check_grid_detector_compatibility(detector,grid,field_property_idx):
 
     if grid.axunits[2] is None:
         warnings.warn("Grid unit for spectral axis not specified. Assuming it matches detector spatial unit")
+    elif detector.spectral_unit is None:
+        warnings.warn("Detector unit for spectral dimension not specified. Assuming it matches grid unit")
     else:
         try: 
             _check_unit(grid.axunits[2],'spectral')
@@ -75,8 +81,10 @@ def _check_grid_detector_compatibility(detector,grid,field_property_idx):
             raise ValueError("Grid and detector spectral axis units don't match, unit conversion has not been implemented")
 
     # Check flux units
-    if grid.gridunits is None:
+    if grid.gridunits[field_property_idx] is None:
         warnings.warn("Grid flux unit not specified. Assuming it matches detector flux unit")
+    elif detector.flux_unit is None:
+        warnings.warn("Detector unit for flux not specified. Assuming it matches grid unit")
     else:
         try: 
             _check_unit(grid.gridunits,'flux')
@@ -84,3 +92,17 @@ def _check_grid_detector_compatibility(detector,grid,field_property_idx):
             raise ValueError("grid flux unit not recognized")
         if grid.gridunits[field_property_idx] != detector.flux_unit:
             raise ValueError("Grid and detector flux units don't match, unit conversion has not been implemented")
+
+def _specunit_type(unit: str) -> str:
+    if unit in ['THz','GHz','MHz','kHz','Hz']:
+        return 'freq'
+    if unit in ['nm','um','mm','cm','m']:
+        return 'wl'
+    else:
+        return 'unknown'
+    
+def _dict_none_copy(x):
+    if x is None:
+        return None
+    else:
+        return x.copy()
