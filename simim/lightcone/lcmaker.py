@@ -75,9 +75,9 @@ class LCMaker():
             raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
         self.sim = sim
 
-        if sim not in paths.lightcones.keys():
+        if sim not in paths.lcs.keys():
             paths._newlcpath(self.sim)
-        self.lc_path = os.path.join(paths.lightcones[sim], name)
+        self.lc_path = os.path.join(paths.lcs[sim], name)
         if os.path.exists(self.lc_path):
             print("A file for light cones of this name already exists.")
             print("Light cones already saved may be overwritten.")
@@ -252,7 +252,6 @@ class LCMaker():
 
     def build_lightcones(self,
                          n,
-                         resume_idx,
                          rng=np.random.default_rng()):
         """Code to construct a specified number of light cones
 
