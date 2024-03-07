@@ -515,4 +515,70 @@ def test_map():
     assert np.all([i1.maps[f].grid.ndim==3 for f in i1.maps])
     assert np.all([i1.maps[f].grid.shape[2]==2 for f in i1.maps])
 
+def test_sample():
+
+    i1 = Instrument(default_spatial_response='gauss',
+        default_spectral_response='gauss',
+        default_noise_function='white',
+        default_spatial_kwargs={'fwhmx':1,'fwhmy':1},
+        default_spectral_kwargs={'fwhm':1,'freq0':100},
+        default_noise_kwargs={'rms':1},
+        best_spatial_res=5,
+        spatial_unit='rad',spectral_unit='Hz',flux_unit='Jy')
+    
+    i1.add_detector(name='det1',nominal_frequency=100)
+    i1.add_detector(name='det2',nominal_frequency=100)
+
+    g1 = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g1.init_grid()
+    i1.add_field(g1,name='f1')
+    g2 = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g2.init_grid()
+    i1.add_field(g2,name='f2')
+
+    i1.map_fields()
+    
+    positions = np.stack((np.linspace(0,100,100),np.linspace(20,80,100)),axis=1)
+    samples = i1.sample_fields(positions,'f1',dt=1)
+    assert type(samples) == np.ndarray
+    assert samples.shape == (100,2)
+
+    samples = i1.sample_fields(positions,dt=1)
+    assert type(samples) == dict
+    assert list(samples.keys()) == i1.field_names
+    assert samples['f1'].shape == (100,2)
+    assert samples['f2'].shape == (100,2)
+
+def test_sample_noise():
+
+    i1 = Instrument(default_spatial_response='gauss',
+        default_spectral_response='gauss',
+        default_noise_function='white',
+        default_spatial_kwargs={'fwhmx':1,'fwhmy':1},
+        default_spectral_kwargs={'fwhm':1,'freq0':100},
+        default_noise_kwargs={'rms':1},
+        best_spatial_res=5,
+        spatial_unit='rad',spectral_unit='Hz',flux_unit='Jy')
+    
+    i1.add_detector(name='det1',nominal_frequency=100)
+
+    g1 = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g1.init_grid()
+    i1.add_field(g1,name='f1')
+    i1.map_fields()
+    
+    positions = np.stack((np.linspace(10,90,100),np.linspace(20,80,100)),axis=1)
+    samples = i1.sample_fields(positions,'f1',dt=1,sample_noise=False)
+    assert type(samples) == np.ndarray
+    assert samples.shape == (100,1)
+    assert np.all(samples==0)
+
+    # Error when dt not specified and noise requested
+    with pytest.raises(Exception):
+        samples = i1.sample_fields(positions,'f1',sample_noise=True)
+
+    samples = i1.sample_fields(positions,'f1',dt=1,sample_noise=True)
+    assert type(samples) == np.ndarray
+    assert samples.shape == (100,1)
+    assert np.all(samples==0) == False
 

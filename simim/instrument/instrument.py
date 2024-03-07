@@ -13,10 +13,8 @@ from simim.instrument.spectral_response import gauss_response, boxcar_response
 from simim.map import GridFromAxesAndFunction
 
 # Refactor Outline:
-##     method to map spectral cube over all detectors (optional: just one detector)
-##     method to sample spectral cube over all detectors (should be possible with current grid code: just one detector)
+##     method to sample spectral cube over specified detectors
 ##     methods to sample just noise/just signal
-##     * method to attach detectors, combine detectors from other instruments
 ##     * method to plot detector response (out of all detectors) next to the map of a field from that detector (optional: animate)
 ## Detector class - wraps around instrument to setup a single-detector instrument, redefines methods to do the one det versions
 
@@ -30,6 +28,7 @@ class _DetectorInfo:
     spectral_kwargs: dict
     noise_function: Callable
     noise_kwargs: dict
+    pointing_offsets: tuple
 
     def __init__(self, name: str):
         self.name = name
@@ -65,7 +64,8 @@ class Instrument:
                  default_spectral_response: Callable = None,
                  default_spectral_kwargs: dict = None,
                  default_noise_function: Callable = None,
-                 default_noise_kwargs: dict = None
+                 default_noise_kwargs: dict = None,
+                 pointing_offset_frame: str = None
                  ) -> None:
         """
         Parameters
@@ -134,6 +134,8 @@ class Instrument:
             white noise function will be used. The rms for a 1 second sample and
             a DC offset can be specified using the 'rms' and 'bias' parameters
             in noise_kwargs.
+        pointing_offset_frame : 'radec', 'azel'
+            Frame in which to apply offsets, default is 'radec'.
         """
 
         # Tracking detectors
@@ -169,6 +171,14 @@ class Instrument:
         self.spectral_unit = spectral_unit
         _check_unit(flux_unit,'flux')
         self.flux_unit = flux_unit
+
+        if pointing_offset_frame is None:
+            pointing_offset_frame = 'radec'
+        elif pointing_offset_frame not in ['radec','azel','none']:
+            raise ValueError("pointing_offset_frame not recognized")
+        if pointing_offset_frame == 'azel':
+            raise ValueError("pointing offsets in 'azel' frame not yet implemented")
+        self.pointing_offset_frame = pointing_offset_frame
 
 
     def _check_detectors(self,*detector_names: str):
@@ -404,7 +414,8 @@ class Instrument:
                      spectral_response: Callable = None, 
                      spectral_kwargs: dict = None,
                      noise_function: Callable = None, 
-                     noise_kwargs: dict = None):
+                     noise_kwargs: dict = None,
+                     pointing_offsets = None):
         """Add a new detector to the instrument
 
         No arguments are required, if none are given, the detector will have the
@@ -475,7 +486,12 @@ class Instrument:
             parameters in noise_kwargs.
         noise_kwargs : dict, optional (optional)
             A dictionary of kwargs that will be passed to the noise_function
-            function        
+            function
+        pointing_offsets : tuple (optional)
+            A tuple specifying the offset between the telescope pointing axis and 
+            the detector pointing axis. Defaults to (0,0). If given it will be used
+            when sampling and detectors samples will be taken from positions shifted
+            by adding this tuple
         """
 
         # Set name
@@ -484,6 +500,12 @@ class Instrument:
         if name in self.detector_names:
             raise ValueError("Name already in use - this may be because you specified a pre-existing name or because another detector has been given a numerical name that would have been used as a default")
         
+        # Pointing offsets
+        if pointing_offsets is None:
+            pointing_offsets = (0,0)
+        elif len(pointing_offsets) != 2:
+            raise ValueError("pointing_offsets should be a tuple of length 2")
+
         # Invalid case - no function and no default
         if spatial_response is None and self.default_spatial_response is None:
             raise ValueError("No default spatial response is set; one must be provided when initializing detector")
@@ -585,6 +607,7 @@ class Instrument:
                 warnings.warn("auto-determination of response peak failed")
                 self.detectors[name].reffreq = np.nan
 
+        self.detectors[name].pointing_offsets = pointing_offsets
 
         self.detector_counter += 1
         for k in self.field_names:
@@ -705,12 +728,26 @@ class Instrument:
 
 
     def _find_spatial_clones(self) -> list:
+        """Determine which detectors have the same spatial response function and keyword dict"""
         need_groups = [d for d in self.detector_names]
         groups = []
         
         while len(need_groups) > 0:
             d0 = need_groups[0]
             matches = [d for d in need_groups if self.detectors[d].spatial_response == self.detectors[d0].spatial_response and self.detectors[d].spatial_kwargs == self.detectors[d0].spatial_kwargs]
+            need_groups = [d for d in need_groups if d not in matches]
+            groups.append(matches)
+
+        return groups
+
+    def _find_pointing_clones(self) -> list:
+        """Determine which detectors have the same pointing offsets"""
+        need_groups = [d for d in self.detector_names]
+        groups = []
+        
+        while len(need_groups) > 0:
+            d0 = need_groups[0]
+            matches = [d for d in need_groups if self.detectors[d].pointing_offsets == self.detectors[d0].pointing_offsets]
             need_groups = [d for d in need_groups if d not in matches]
             groups.append(matches)
 
@@ -789,7 +826,7 @@ class Instrument:
         Parameters
         ----------
         *field_names : str
-            One or more strings naming the fields to remove, if no names are
+            One or more strings naming the fields to map, if no names are
             specified all fields will be mapped
         spatial_response_norm : 'peak', 'area', or 'none'
             How to normalize the beam peak will make the peak pixel equal to 1,
@@ -864,6 +901,99 @@ class Instrument:
             # Save the result
             self.maps[f] = detector_map
             self.maps_consistent[f] = True
+
+
+    def sample_fields(self,
+                      positions: np.ndarray,
+                      *field_names: str,
+                      sample_signal: bool = True,
+                      sample_noise: bool = True,
+                      dt: float = None):
+        """Sample observed field at a specified set of points
+        
+        This code requires that the map_fields method has been run for the
+        fields to be sampled.
+
+        Parameters
+        ----------
+        positions : array
+            An array containg the positions at which to sample the field. It
+            should have a shape of (n_samples, 2). Repeats of the same position
+            are allowed.
+        *field_names : str
+            One or more strings naming the fields to sample, if no names are
+            specified all fields will be used
+        sample_signal : bool (optional)
+            Determines whether to sample signal (from the field maps). Default
+            is True, set to False to draw noise samples
+        sample_noise : bool (optional)
+            Determines whether to sample noise (from detector noise_functions).
+            Default is True, set to False to draw signal-only samples
+        dt : float (optional)
+            The timestep for each sample, passed to noise_function when drawing
+            noise samples.
+
+        Returns
+        -------
+        samples : array or dict
+            If one field is requested, this will be an array of shape
+            (n_samples, n_detectors) containing the samples for each detector.
+            If multiple fields are requested, it will be a dict containing an
+            array of samples for each field. Dictionary keys will match field
+            names.
+        """
+        
+        # Check field_names
+        if len(field_names) == 0:
+            field_names = self.field_names
+        else:
+            self._check_fields(*field_names)
+
+        # Check maps
+        for f in field_names:
+            if not self.maps_consistent[f]:
+                raise ValueError(f"Maps for field {f} are inconsistent, re-run map_fields method")
+        
+        # check positions
+        if positions.ndim != 2 or positions.shape[1] != 2:
+            raise ValueError("positions must be a 2d array with shape (N,2)")
+        
+        # check dt input
+        if dt is None and sample_noise:
+            raise ValueError("dt must be specified when noise==True")
+    
+        # check samples required
+        if sample_noise == False and sample_signal == False:
+            raise ValueError("At least one of sample_signal and sample_noise must be True")
+
+        # Determine how many samplings to do...
+        detector_groups = self._find_pointing_clones()
+
+        # Iterate through fields
+        all_samples = {}
+        for f in field_names:
+            map_f = self.maps[f]
+
+            if sample_noise:
+                map_samples = [self.detectors[d].noise_function(len(positions),dt,**self.detectors[d].noise_kwargs) for d in self.detector_names]
+            else:
+                map_samples = [0 for d in self.detector_names]
+
+            if sample_signal:
+                for group in detector_groups:
+                    idxs = np.sort(np.array([self.detector_names.index(d) for d in group]))
+                    offset = self.detectors[group[0]].pointing_offsets
+                    samples = map_f.sample(positions + offset, properties=idxs)
+                    for isamp, idet in enumerate(idxs):
+                        map_samples[idet] = map_samples[idet] + samples[:,isamp]
+
+            all_samples[f] = np.stack(map_samples,axis=1)
+
+        if len(field_names) == 1:
+            return all_samples[field_names[0]]
+        else:
+            return all_samples
+
 
 
     @pltdeco
@@ -974,6 +1104,16 @@ class Instrument:
             axes.plot(f, d.spectral_response(f, **d.spectral_kwargs), color=cmap(i/(len(self.detectors)-.99)))
 
         plt.show()
+
+
+
+
+
+
+class Detector(Instrument):
+    """Modified version of instrument class for working with single detectors"""
+
+    pass
 
 
 # #### OLD VERSIONS:
