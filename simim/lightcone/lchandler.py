@@ -7,6 +7,7 @@ import astropy.units as u
 
 from matplotlib import animation
 
+from simim.map import Gridder
 from simim._paths import _SimIMPaths
 from simim._handlers import Handler
 from simim._pltsetup import *
@@ -77,10 +78,15 @@ class LCHandler(Handler):
         self.open_angle = self.metadata['open angle']
         self.shape = self.metadata['shape']
         self.aspect_ratio = self.metadata['aspect ratio']
+        self.minimum_redshift = self.metadata['minimum redshift']
+        self.maximum_redshift = self.metadata['maximum redshift']
         self.extra_props['cosmo'] = self.cosmo
         self.extra_props['open_angle'] = self.open_angle
         self.extra_props['shape'] = self.shape
         self.extra_props['aspect_ratio'] = self.aspect_ratio
+        self.extra_props['minimum redshift'] = self.minimum_redshift
+        self.extra_props['maximum redshift'] = self.maximum_redshift
+
 
     def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=False):
         """Compute the comoving volume of the light cone
@@ -202,6 +208,97 @@ class LCHandler(Handler):
         self.inds_active = np.copy(inds_active_save)
 
         return redshift_bins, vals
+
+    def grid(self, *property_names, 
+             restfreq=None,
+             in_h_units=False,use_all_inds=False,
+             res=None,ralim=None,declim=None,zlim=None,
+             norm=None):
+        """Place selected properties into a 3d grid
+        
+        Uses the properties of the array to construct a position
+        (ra,dec,redshift)-value (property_names) grid. Only required argument is
+        a valid property name or names. Additional arguments can specify the
+        limits and resolution of the grid. Passing a line rest frequency to
+        restfreq will cause the grid to be constructed in terms of the
+        corresponding observed frequencies instead of redshift.
+
+        Parameters
+        ----------
+        property_names : str
+            The name or names of properties in the Handler instance
+        restfreq : float
+            A rest frequency to use for converting the third axis from redshift
+            to frequency. The returned axis will be constructed as
+            restfreq/(1+z)
+        in_h_units : bool, default=False
+            If True, positions and property values fed to the gridder will be in
+            units including little h. If False, little h dependence will be
+            removed.
+        use_all_inds : bool, default=False
+            If True function all halos will be gridded, otherwise only active
+            halos will be included.
+        res : float, optional
+            The resolution for the grid in Mpc (if in_h_units==False) or Mpc/h
+            (if in_h_units==True). If no value is specified, it will default to
+            1/100th of the box edge length
+        ralim, decylim, zlim : tuples, optional
+            Tuples containing minimum and maximum values of the grid along the
+            x, y, and z axes, in units of Mpc (if in_h_units==False) or Mpc/h
+            (if in_h_units==True). If no values are specified the defaults are
+            (0, box edge length).
+        norm : None, float
+            Apply a normalization to the gridded values. If a float is given
+            each cell will multiplied by the float
+
+        Returns
+        -------
+        grid : simim.map.grid instance
+            The gridded properties
+        """
+
+        x = self.return_property('ra',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        y = self.return_property('dec',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        z = self.return_property('redshift',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        if restfreq is not None:
+            z = restfreq/(1+z)
+        props = np.array([self.return_property(p,in_h_units=in_h_units,use_all_inds=use_all_inds) for p in property_names]).T
+        
+        if ralim is None:
+            ralim = (-self.open_angle/2,self.open_angle/2)
+        if declim is None:
+            declim = (-self.open_angle*self.aspect_ratio/2,self.open_angle*self.aspect_ratio/2)
+        if zlim is None:
+            if restfreq is not None:
+                zlim = (restfreq/(1+self.maximum_redshift), restfreq/(1+self.minimum_redshift))
+            else:
+                zlim = (self.minimum_redshift, self.maximum_redshift)
+
+        c = []
+        l = []
+
+        for lim in ralim,declim,zlim:
+            if len(lim) != 2:
+                raise ValueError("ralim, declim, and zlim must each be None or have length = 2")
+            else:
+                c.append((lim[0]+lim[1])/2)
+                l.append(np.max(lim) - np.min(lim))
+
+        if res is None:
+            res = [x/100 for x in l]
+
+        grid = Gridder(np.array([x, y, z]).T, props,
+                       center_point=c, side_length=l,
+                       pixel_size=res)
+
+        if norm is None:
+            norm = 1        
+        grid.grid *= norm
+
+        return grid
+
+
+
 
     @pltdeco
     def animate(self, save=None, use_all_inds=False, colorpropname='mass',colorscale='log', sizepropname='mass',sizescale='log',in_h_units=False):
