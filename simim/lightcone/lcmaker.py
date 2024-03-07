@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 
 from simim._pltsetup import *
 from simim._paths import _SimIMPaths
-from simim.siminterface.simhandler import simhandler
+from simim.siminterface import SimHandler
 from simim.siminterface._sims import _checksim
 
 class LCMaker():
@@ -105,7 +105,7 @@ class LCMaker():
         self.minimum_mass = minimum_mass
 
         # Load some sim data and the class to handle extracting data
-        self.sim_handler = simhandler(self.sim)
+        self.sim_handler = SimHandler(self.sim)
         self.metadata = self.sim_handler.metadata
         self.snap_meta = self.sim_handler.snap_meta
         self.snap_keys_all = self.sim_handler.extract_snap_keys()
@@ -251,7 +251,7 @@ class LCMaker():
         return pa, pa_transformation_matrix
 
     def build_lightcones(self,
-                         n,
+                         n=1,
                          rng=np.random.default_rng()):
         """Code to construct a specified number of light cones
 

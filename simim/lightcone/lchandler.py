@@ -119,7 +119,7 @@ class LCHandler(Handler):
         if redshift_min == None:
             redshift_min=self.metadata['minimum redshift']
         if redshift_max == None:
-            redshift_max=self.metadata['minimum redshift']
+            redshift_max=self.metadata['maximum redshift']
         if shape == None:
             shape=self.metadata['shape']
         if open_angle == None:
@@ -148,22 +148,15 @@ class LCHandler(Handler):
                 raise ValueError("specified box does not fit in circular lightcone")
 
         # Figure out the volume
-        dmin = self.cosmo.comoving_distance(redshift_min).value
-        dmax = self.cosmo.comoving_distance(redshift_max).value
-        length = dmax-dmin
-
-        dtmin = self.cosmo.comoving_transverse_distance(redshift_min).value
-        dtmax = self.cosmo.comoving_transverse_distance(redshift_max).value
-
         if shape == 'box':
-            area0 = open_angle * open_angle * aspect_ratio
+            area = open_angle * open_angle * aspect_ratio
         elif shape == 'circle':
-            area0 = np.pi * (open_angle/2)**2
+            area = np.pi * (open_angle/2)**2
 
-        areamin = area0 * dtmin**2
-        areamax = area0 * dtmax**2
+        v2 = self.cosmo.comoving_volume(redshift_max).value
+        v1 = self.cosmo.comoving_volume(redshift_min).value
+        volume = (v2-v1) * area/(4*np.pi)
 
-        volume = (areamin+areamax)/2 * length
         if in_h_units:
             volume *= self.h**3
 
@@ -299,7 +292,6 @@ class LCHandler(Handler):
 
 
 
-
     @pltdeco
     def animate(self, save=None, use_all_inds=False, colorpropname='mass',colorscale='log', sizepropname='mass',sizescale='log',in_h_units=False):
         """Make an animation of the light cone
@@ -360,9 +352,6 @@ class LCHandler(Handler):
         colorrange = np.ptp(colorprop)
         colors = cmap((colorprop-colormin)/colorrange)
 
-        sm = plt.cm.ScalarMappable(cmap=cmap)
-        sm.set_array([colormin,(colormin+colorrange)])
-
         # Set up sizes
         sizeprop = self.return_property(sizepropname,use_all_inds=use_all_inds,in_h_units=in_h_units)
         if sizescale == 'log':
@@ -375,8 +364,19 @@ class LCHandler(Handler):
 
         # set up plots
         figure = plt.figure(figsize=(8,8))
+        figure.subplots_adjust(left=.05,right=.9,bottom=.15,top=.95)
         title = plt.suptitle('')
         # figure.legend(handles=[p0,p1,p2,p3,p4,p5],loc=8,bbox_to_anchor=(.5,0),ncol=3,markerscale=.5,fontsize='small')
+
+        # Colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap)
+        sm.set_array([colormin,(colormin+colorrange)])
+
+        ax_cb = figure.add_axes([.91,.15,.03,.8])
+        if colorscale == 'log':
+            figure.colorbar(sm,ax=ax_cb,label='log '+colorpropname)
+        else:
+            figure.colorbar(sm,ax=ax_cb,label=colorpropname)
 
         # cone plot
         plot_cone = plt.subplot(212)
@@ -384,12 +384,6 @@ class LCHandler(Handler):
 
         cone = plot_cone.scatter(z, x, s=1, c=colors)
         box, = plot_cone.plot([], [], color='#ff7f0e')
-
-        if colorscale == 'log':
-            figure.colorbar(sm,label='log '+colorpropname)
-        else:
-            figure.colorbar(sm,label=colorpropname)
-
 
         # physical cross section plot
         plot_xy = plt.subplot(222)
@@ -411,7 +405,6 @@ class LCHandler(Handler):
             radec_outline, = plot_radec.plot(obs_lim_xy/2*np.cos(theta), obs_lim_xy/2*np.sin(theta), color='#ff7f0e')
         else:
             radec_outline, = plot_radec.plot(obs_lim_xy/2*edgepaternx, obs_lim_xy/2*edgepaterny, color='#ff7f0e')
-
 
         # Initialization for animation_init
         def animation_init():
