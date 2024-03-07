@@ -16,7 +16,8 @@ def test_Grid():
     assert np.all(g.axes_centers[1] == np.arange(10) + 0.5)
 
 def test_Grid_wrong_pix_size():
-    g = Grid(1, (5,5), (10,10), (1.1,1.1))
+    with pytest.warns():
+        g = Grid(1, (5,5), (10,10), (1.1,1.1))
     g.init_grid()
 
     assert g.grid.shape == (10,10,1)
@@ -127,3 +128,21 @@ def test_pad_opt():
     g2.pad((0,1),(2,2),15)
 
     assert np.all(g1.grid == g2.grid)
+
+def test_collapse():
+    g = Grid(1, (5,5), (10,10), (1,1))
+    g.init_grid()
+    g2 = g.collapse_dimension(0,in_place=False)
+    g = g.collapse_dimension(0,in_place=True)
+
+    for h in [g,g2]:
+        assert h.n_dimensions == 1
+        assert len(h.axes) == 1
+        assert len(h.axes_centers) == 1
+        assert len(h.fourier_axes) == 1
+        assert len(h.fourier_axes_centers) == 1
+
+        assert np.all(h.center_point == np.array([5]))
+        assert np.all(h.pixel_size == np.array([1]))
+        assert np.all(h.side_length == np.array([10]))
+        assert h.grid.shape == (10,1)
