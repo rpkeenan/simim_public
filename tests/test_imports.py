@@ -42,3 +42,12 @@ def test_import_map():
     resources = dir(simim.lightcone)
     for check_resource in ['LCMaker','LCHandler']:
         assert check_resource in resources
+
+def test_import_inst():
+    """Make sure the expected files are imported - simim.instrument"""
+
+    import simim.instrument
+
+    resources = dir(simim.instrument)
+    for check_resource in ['Instrument','Detector','gauss_psf','gauss_psf_freq_dependent','gauss_response','boxcar_response','white_noise','zero_noise']:
+        assert check_resource in resources
