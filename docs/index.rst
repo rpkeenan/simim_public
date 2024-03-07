@@ -44,3 +44,9 @@ extragalactic sky in radio, sub-millimeter, and far-infrared.
    :maxdepth: 3
 
    api_map
+
+.. toctree::
+   :caption: Instrument Modeling
+   :maxdepth: 3
+
+   api_instrument
