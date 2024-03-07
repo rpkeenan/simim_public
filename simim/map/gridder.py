@@ -934,7 +934,7 @@ class Grid():
         # array that will be multiplied across the whole grid (allowing weights to varry
         # for different properties)
         if weights is None:
-            weights = np.array([np.ones(len(self.axes[i])) for i in ax])
+            weights = [np.ones(len(self.axes_centers[i])) for i in ax]
         elif len(ax) == 1:
             weights = [weights]
 
