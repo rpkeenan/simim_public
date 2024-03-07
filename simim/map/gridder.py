@@ -323,8 +323,9 @@ class Grid():
         unpad_full.append((0,0))
 
         # Pad / unpad the relevant axes and update the grid parameters
-        self.grid = np.pad(self.grid,pad_full,constant_values=val)
-        self.grid = _unpad(self.grid,unpad_full)
+        if self.grid_active:
+            self.grid = np.pad(self.grid,pad_full,constant_values=val)
+            self.grid = _unpad(self.grid,unpad_full)
 
         self.axes = new_axes
         self.axes_centers = new_axes_centers
@@ -334,8 +335,9 @@ class Grid():
         self.side_length = new_side_length
         self.pixel_size = new_pixel_size
 
-        if self.grid.shape[:-1] != tuple(self.n_pixels):
-            raise ValueError("Something went wrong - grid doesn't have expected size")
+        if self.grid_active:
+            if self.grid.shape[:-1] != tuple(self.n_pixels):
+                raise ValueError("Something went wrong - grid doesn't have expected size")
 
 
     # Should extend this method to work on fourier space
@@ -381,7 +383,8 @@ class Grid():
             raise ValueError("No cells within specified limits")
 
         # Crop the grid
-        self.grid = np.take(self.grid,np.nonzero((self.axes_centers[ax]>=min) & (self.axes_centers[ax]<=max))[0],axis=ax)
+        if self.grid_active:
+            self.grid = np.take(self.grid,np.nonzero((self.axes_centers[ax]>=min) & (self.axes_centers[ax]<=max))[0],axis=ax)
             
         self.axes_centers[ax] = self.axes_centers[ax][(self.axes_centers[ax]>=min) & (self.axes_centers[ax]<=max)]
         self.axes[ax] = np.concatenate((self.axes_centers[ax] - self.pixel_size[ax]/2,[np.max(self.axes_centers[ax]) + self.pixel_size[ax]/2]))
@@ -565,6 +568,10 @@ class Grid():
             dimension for each set of values given rather than adding them
             on top of existing values. Default is False.
         """
+        
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
         if np.any(self.fourier_space):
             raise ValueError("Some axes are in fourier space, cannot add new properties in map space.")
 
@@ -586,6 +593,8 @@ class Grid():
                 if positions.shape[1] !=self.n_dimensions:
                     raise ValueError('positions (dim={}) does not have the right number of dimensions for the grid (dim={})'.format(positions.shape[1],self.n_dimensions))
 
+            if values is None:
+                values = np.ones(len(positions))
             values = np.array(values,ndmin=1,copy=True)
             if values.ndim == 1:
                 values = values.reshape((values.shape[0],1))
@@ -639,6 +648,9 @@ class Grid():
             containing only the summed property (in_place=False)
         """
 
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
         if properties is None:
             properties = np.arange(self.n_properties)
         
@@ -687,6 +699,9 @@ class Grid():
             dimensional even if only one property was requested.
         """
 
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
         # Select the properties to sample
         if properties is None:
             properties = np.arange(self.n_properties,dtype=int)
@@ -875,11 +890,13 @@ class Grid():
                 slices = [slice(0,None) if j!=axi else slice_ax for j in range(self.n_dimensions+1)]
                 slices_new = [slice(0,None) if j!=axi else i for j in range(self.n_dimensions+1)]
 
-                new_grid[slices_new] = use_function(self.grid[slices],axis=axi)
+                if self.grid_active:
+                    new_grid[slices_new] = use_function(self.grid[slices],axis=axi)
                 new_ax_centers[i] = np.mean(self.axes_centers[axi][slice_ax])
 
             # Set up new grid
-            self.grid = new_grid
+            if self.grid_active:
+                self.grid = new_grid
             self.axes_centers[axi] = new_ax_centers
             self.axes[axi] = np.concatenate((new_ax_centers-(factor[axi]*self.pixel_size[axi])/2, [new_ax_centers[-1]+(factor[axi]*self.pixel_size[axi])/2]))
             self.pixel_size[axi] = self.pixel_size[axi]*factor[axi]
@@ -1485,6 +1502,9 @@ class Grid():
             plt.pcolor() when creating the plot data        
         """
 
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
         if self.n_dimensions < 2:
             raise ValueError("visualize only works for 2D or larger maps")
 
@@ -1521,6 +1541,9 @@ class Grid():
     def animate(self, save=None, prop_ind=0, slide_dim=2, face_dims=[0,1], i0=0, still=False, logscale=False, minrescale=1, maxrescale=1):
         """Animated stepthrough of the grid for visualizing 3d data"""
 
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
         if self.n_dimensions < 3:
             raise ValueError("animate only works for 3D or larger maps")
 
