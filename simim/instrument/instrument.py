@@ -4,7 +4,7 @@ from typing import Callable
 
 from simim._pltsetup import *
 from simim.map import Grid
-from simim.instrument.helpers import _check_unit, _check_grid_detector_compatibility, _specunit_type, _dict_none_copy
+from simim.instrument._helpers import _check_unit, _check_grid_detector_compatibility, _specunit_type, _dict_none_copy
 
 
 from simim.instrument.noise_functions import zero_noise, white_noise
@@ -12,9 +12,8 @@ from simim.instrument.spatial_response import gauss_psf, gauss_psf_freq_dependen
 from simim.instrument.spectral_response import gauss_response, boxcar_response
 from simim.map import GridFromAxesAndFunction
 
-# Refactor Outline:
+# To Do List:
 ##     * method to plot detector response (out of all detectors) next to the map of a field from that detector (optional: animate)
-## Detector class - wraps around instrument to setup a single-detector instrument, redefines methods to do the one det versions
 
 
 class _DetectorInfo:
@@ -30,6 +29,7 @@ class _DetectorInfo:
 
     def __init__(self, name: str):
         self.name = name
+
 
 
 class Instrument:
@@ -1105,9 +1105,6 @@ class Instrument:
 
 
 
-
-
-
 class Detector(Instrument):
     """Modified version of instrument class for working with single detectors"""
 
@@ -1135,37 +1132,3 @@ class Detector(Instrument):
                           spectral_response=spectral_response,spectral_kwargs=spectral_kwargs,
                           noise_function=noise_function,noise_kwargs=noise_kwargs,
                           pointing_offsets=pointing_offsets)
-    
-
-
-
-# #### OLD VERSIONS:
-
-# class Detector():
-#     def sample(self,positions,dt,properties=None,signal=True,noise=True):
-                
-#         if signal and noise:
-#             self.sample_signal(positions,properties=properties)
-#             self.sample_noise(len(positions),dt)
-#             self.timestream = self.timestream_signal + self.timestream_noise.reshape(-1,1)
-#         elif signal:
-#             self.sample_signal(positions,properties=properties)
-#             self.timestream = self.timestream_signal
-#         elif noise:
-#             self.sample_noise(len(positions),dt)
-#             self.timestream = self.timestream_noise.reshape(-1,1)
-#         self.timestream_positions = positions
-#         self.timestream_dt = dt
-
-#         return self.timestream
-
-#     def sample_signal(self,positions,properties=None):
-#         if not self.map_initialized:
-#             raise ValueError("No map initialized, cannot sample")
-        
-#         self.timestream_signal = self.map.sample(positions=positions,properties=properties)
-#         return self.timestream_signal
-
-#     def sample_noise(self,nsamples,dt):
-#         self.timestream_noise = self.noise_function(nsamples,dt,**self.noise_kwargs)
-#         return self.timestream_noise

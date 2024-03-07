@@ -3,6 +3,7 @@ import warnings
 from simim.map import Grid
 
 def _check_shape(x):
+    """Verify the shapes of arrays used for beams"""
     if not isinstance(x,np.ndarray):
         try:
             x = np.array(x,ndmin=1)
@@ -33,6 +34,7 @@ def _check_unit(unit,axtype):
         raise ValueError("{} axis unit '{}' not recognized".format(axtype,unit))
 
 def _check_grid_detector_compatibility(detector,grid,field_property_idx):
+    """Verify that units of detector and grid are compatible"""
     if not isinstance(grid,Grid):
         raise ValueError("Must specify an simim grid object for mapping")
     if not grid.grid_active:
@@ -102,6 +104,7 @@ def _specunit_type(unit: str) -> str:
         return 'unknown'
     
 def _dict_none_copy(x):
+    """Copy a dictionary or return None if x is None"""
     if x is None:
         return None
     else:
