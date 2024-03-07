@@ -8,7 +8,7 @@ authors = [{name = "R P Keenan"}]
 description = "Code for simulating the radio, sub-mm and FIR sky"
 readme = "README.md"
 license = {file = "LICENSE"}
-version = "0.3.0"
+version = "0.3.3"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -36,3 +36,13 @@ setupsimim = "simim:setupsimim"
 [project.urls]
 Documentation = "https://simim.readthedocs.io"
 Repository = "https://github.com/rpkeenan/simim_public"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+"*" = ["*.dat"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["rootpath.txt"]
