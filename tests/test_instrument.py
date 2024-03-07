@@ -1,11 +1,10 @@
 import pytest
 import numpy as np
 
-from simim.instrument import Instrument
+from simim.instrument import Instrument, Detector
 from simim.map import Grid
-from simim.instrument.spectral_response import gauss_response, boxcar_response
+from simim.instrument.spectral_response import gauss_response
 from simim.instrument.spatial_response import gauss_psf, gauss_psf_freq_dependent
-from simim.instrument.noise_functions import white_noise, zero_noise
 
 # Tests for adding grids
 
@@ -582,3 +581,25 @@ def test_sample_noise():
     assert samples.shape == (100,1)
     assert np.all(samples==0) == False
 
+
+def test_detector():
+    i1 = Instrument(default_spatial_response='gauss',
+                    default_spectral_response='gauss',
+                    default_noise_function='none',
+                    default_spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi},
+                    default_spectral_kwargs={'fwhm':1e9,'freq0':100e9},
+                    default_noise_kwargs={})
+    i1.add_detector()
+
+    i2 = Detector(spatial_response='gauss',spectral_response='gauss',noise_function='none',
+                  spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi},
+                  spectral_kwargs={'fwhm':1e9,'freq0':100e9},
+                  noise_kwargs={})
+    
+    assert i1.detectors['0'].spectral_response == i2.detectors['detector'].spectral_response
+    assert i1.detectors['0'].spatial_response == i2.detectors['detector'].spatial_response
+    assert i1.detectors['0'].noise_function == i2.detectors['detector'].noise_function
+
+    assert i1.detectors['0'].spectral_kwargs == i2.detectors['detector'].spectral_kwargs
+    assert i1.detectors['0'].spatial_kwargs == i2.detectors['detector'].spatial_kwargs
+    assert i1.detectors['0'].noise_kwargs == i2.detectors['detector'].noise_kwargs

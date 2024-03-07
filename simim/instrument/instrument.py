@@ -1111,7 +1111,32 @@ class Instrument:
 class Detector(Instrument):
     """Modified version of instrument class for working with single detectors"""
 
-    pass
+    def __init__(self,
+                 spatial_unit: str = None, 
+                 spectral_unit: str = None, 
+                 flux_unit: str = None,
+                 spatial_response: Callable = None,
+                 spatial_kwargs: dict = None,
+                 spectral_response: Callable = None,
+                 spectral_kwargs: dict = None,
+                 noise_function: Callable = None,
+                 noise_kwargs: dict = None,
+                 pointing_offsets: tuple = None,
+                 pointing_offset_frame: str = None,
+                 nominal_frequency: float = None,
+                 spatial_res: float = None, 
+                 spectral_res: float = None):
+        
+        super().__init__(spatial_unit=spatial_unit,spectral_unit=spectral_unit,flux_unit=flux_unit,
+                       best_spatial_res=spatial_res,best_spectral_res=spectral_res,
+                       pointing_offset_frame=pointing_offset_frame)
+        self.add_detector(name='detector',nominal_frequency=nominal_frequency,
+                          spatial_response=spatial_response,spatial_kwargs=spatial_kwargs,
+                          spectral_response=spectral_response,spectral_kwargs=spectral_kwargs,
+                          noise_function=noise_function,noise_kwargs=noise_kwargs,
+                          pointing_offsets=pointing_offsets)
+    
+
 
 
 # #### OLD VERSIONS:
