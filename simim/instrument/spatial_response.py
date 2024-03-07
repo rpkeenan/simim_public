@@ -13,7 +13,7 @@ def gauss_psf(dx,dy,freq,fwhmx=1,fwhmy=1,cx=0,cy=0,det_xoffset=0,det_yoffset=0):
     response = np.exp(-4*np.log(2)*(x**2/fwhmx**2 + y**2/fwhmy**2)) * z
     return response
 
-def gauss_psf_freq_dependent(dx,dy,freq,freq0=100,fwhmx=1,fwhmy=1,cx=0,cy=0,freq_exp=-1,det_xoffset=0,det_yoffset=0):
+def gauss_psf_freq_dependent(dx,dy,freq,freq0=100e9,fwhmx=1,fwhmy=1,cx=0,cy=0,freq_exp=-1,det_xoffset=0,det_yoffset=0):
     dx = _check_shape(dx)
     dy = _check_shape(dy)
     freq = _check_shape(freq)

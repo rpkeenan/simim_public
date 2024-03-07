@@ -148,9 +148,8 @@ class Instrument:
         self.field_counter = 0
 
         # Tracking maps
-        self.maps_consistent = False
+        self.maps_consistent = {}
         self.maps = {}
-        self.noisemaps = {}
 
 
         # Collect response functions, assign the correct ones for some defaults
@@ -266,6 +265,10 @@ class Instrument:
                 self.detectors[d].noise_function = resp_function
                 self.detectors[d].noise_kwargs = resp_kwargs.copy()
 
+        if len(detector_names) > 0:
+            for k in self.field_names:
+                self.maps_consistent[k] = False
+
         # Update default
         if do_inst:
             if mode == 'spatial':
@@ -278,7 +281,6 @@ class Instrument:
                 self.default_noise_function = resp_function
                 self.default_noise_kwargs = _dict_none_copy(default_kwargs)
 
-        self.maps_consistent = False
 
     def set_spatial_respones(self,
                              *detector_names: str,
@@ -538,7 +540,7 @@ class Instrument:
         det = _DetectorInfo(name=name)
         self.detectors[name] = det
         self.detector_names.append(name)
-        cp_maps_consistent = self.maps_consistent
+        cp_maps_consistent = self.maps_consistent.copy()
 
         try:
             self.set_spatial_respones(name, spatial_response=spatial_response, spatial_kwargs=spatial_kwargs)
@@ -585,7 +587,9 @@ class Instrument:
 
 
         self.detector_counter += 1
-        self.maps_consistent = False
+        for k in self.field_names:
+            self.maps_consistent[k] = False
+
 
     def del_detectors(self, *detector_names: str) -> None:
         """Remove one or more detectors from the instrument's detector listing
@@ -603,7 +607,8 @@ class Instrument:
             self.detector_names.remove(d)
 
         if len(detector_names) > 0:
-            self.maps_consistent = False
+            for k in self.field_names:
+                self.maps_consistent[k] = False
 
     def add_field(self, grid: Grid, 
                   name: str = None, 
@@ -657,15 +662,15 @@ class Instrument:
             raise ValueError("Name already in use - this may be because you specified a pre-existing name or because a field has been given a numerical name that would have been used as a default")
 
         if self.best_spatial_res is not None:
-            if grid.pixel_size[0] > self.best_spatial_res/5 or grid.pixel_size[1] > self.best_spatial_res/5:
-                warnings.warn("grid pixel size is large relative to spatial resolution")
             if grid.pixel_size[0] > self.best_spatial_res or grid.pixel_size[1] > self.best_spatial_res:
                 raise ValueError("grid pixel size is larger than spatial resolution")
+            if grid.pixel_size[0] > self.best_spatial_res/5 or grid.pixel_size[1] > self.best_spatial_res/5:
+                warnings.warn("grid pixel size is large relative to spatial resolution")
         if self.best_spectral_res is not None:
-            if grid.best_spectral_res[2] > self.best_spatial_res/5:
-                warnings.warn("grid pixel size is large relative to spectral resolution")
-            if grid.best_spectral_res[2] > self.best_spatial_res:
+            if grid.pixel_size[2] > self.best_spectral_res:
                 raise ValueError("grid pixel size is larger than spectral resolution")
+            if grid.pixel_size[2] > self.best_spectral_res/5:
+                warnings.warn("grid pixel size is large relative to spectral resolution")
 
         if in_place:
             self.fields[name] = grid
@@ -676,6 +681,7 @@ class Instrument:
         
         self.field_names.append(name)
         self.field_counter += 1
+        self.maps_consistent[name] = False
 
     def del_fields(self, *field_names: str) -> None:
         """Remove one or more fields from the instrument's field listing
@@ -697,39 +703,84 @@ class Instrument:
                 self.maps.pop(f)
                 self.maps_consistent.pop(f)
 
-### !
-#     def map_field(self,kernel_size=None,spatial_response_norm='peak',beam=None,pad=None,_check=True):
-#         # Either speciffy kernel_size and spatial_response_norm or specify beam (with a grid containing the beam)
-#         # Note that beams provided using beam will not be re-normalized.
 
-#         if beam is not None and kernel_size is not None:
-#             raise ValueError("If beam is specified, kernel_size should be left as None")
+    def _find_spatial_clones(self) -> list:
+        need_groups = [d for d in self.detector_names]
+        groups = []
+        
+        while len(need_groups) > 0:
+            d0 = need_groups[0]
+            matches = [d for d in need_groups if self.detectors[d].spatial_response == self.detectors[d0].spatial_response and self.detectors[d].spatial_kwargs == self.detectors[d0].spatial_kwargs]
+            need_groups = [d for d in need_groups if d not in matches]
+            groups.append(matches)
 
-#         # Set off so it only has to be done once when an Instrument object iterates over many detectors
-#         if _check:
-#             if not self.field_initialized:
-#                 raise ValueError("No field specified - cannot map field")
+        return groups
 
-#         if beam is None:
-#             beam = self._setup_beam(kernel_size=None,spatial_response_norm=spatial_response_norm)
-                    
-#         if _check and beam.grid.ndim != 4:
-#             raise ValueError("Beam does not have three dimensions")
+    def _setup_beam(self,
+                    field: Grid,
+                    spatial_response: Callable,
+                    spatial_kwargs: dict,
+                    spatial_response_norm: str = 'peak',
+                    kernel_size: int = None):
+        """Set up a beam given a set of axes (from field) and spatial_response
+        
+        Parameters
+        ----------
+        field : Grid
+            A field used to define the axes of the beam
+        spatial_response : function
+            Function defining the spatial response of the beam as a function of
+            x, y, and frequency
+        spatial_kwargs : dict
+            Dictionary of kwargs to pass to spatial_response
+        kernel_size : int
+            Number of pixels to use for the psf map. Default will be 10 * the
+            best resolution of the instrument
+        spatial_response_norm : 'peak', 'area', or 'none'
+            How to normalize the beam peak will make the peak pixel equal to 1,
+            area will make the total volume under the PSF equal to 1, none will
+            apply no normalization (assumes this has been handled by the
+            spatial_response function itself)
+        """
 
-#         # Convolve with beam
-#         self.map = self.field.convolve(beam,ax=(0,1),in_place=False,pad=pad)
+        # Check that kernel_size or self.best_spatial_resolution are specified
+        if kernel_size is None and self.best_spatial_res is None:
+            raise ValueError("Not enough infromation to generate a beam - specify kernel_size or set self.best_spatial_res")
 
-#         # Evaluate spectral response over frequency axis
-#         spec = self.spectral_response(beam.axes_centers[2],**self.spectral_kwargs)
+        if kernel_size is None:
+            kernel_size = np.round(self.best_spatial_res / field.pixel_size[:2]).astype(int) * 10 + 1
+        
+        # Check that the value of norm is recognized
+        if spatial_response_norm not in ['peak','area','none']:
+            raise ValueError("spatial_response_norm must be one of 'peak', 'area', 'none'")
+        
+        # Set up axes of beam convolution kernel
+        center = [0,0,field.center_point[2]]
+        side_length = [kernel_size[0]*field.pixel_size[0],kernel_size[1]*field.pixel_size[1],field.side_length[2]]
 
-#         # Collapse along the third dimension using spectral response
-#         self.map = self.map.collapse_dimension(ax=2,weights=spec,mode='average',in_place=True)
-#         self.map_initialized = True
+        # Evaluate beam response over kernel axes
+        beam = Grid(n_properties=1,center_point=center,side_length=side_length,pixel_size=field.pixel_size,axunits=field.axunits,gridunits=field.gridunits)
+        beam.init_grid()
+
+        shape = beam.grid.shape
+        beam.grid = np.expand_dims(spatial_response(beam.axes_centers[0],beam.axes_centers[1],beam.axes_centers[2],**spatial_kwargs),-1)
+        if beam.grid.shape != shape:
+            raise ValueError("spatial_response does not produce an array of the correct shape")
+
+        if spatial_response_norm == 'peak':
+            beam.grid = beam.grid / np.max(beam.grid,axis=(0,1,3)).reshape(1,1,-1,1)
+        elif spatial_response_norm == 'area':
+            beam.grid = beam.grid / np.sum(beam.grid,axis=(0,1,3)).reshape(1,1,-1,1)
+
+        if beam.grid.ndim != 4:
+            raise ValueError("Beam does not have three dimensions")
+
+        return beam
 
     def map_fields(self, 
-                   *field_names: Grid,
-                   kernel_size: int = None,
+                   *field_names: str,
                    spatial_response_norm: str = 'peak',
+                   kernel_size: int = None,
                    beam: Grid = None,
                    pad: int = None):
         """Generate maps of the specified fields based on instruemnt
@@ -738,45 +789,81 @@ class Instrument:
         Parameters
         ----------
         *field_names : str
-            One or more strings naming the fields to remove, if no names
-            are specified all fields will be mapped
+            One or more strings naming the fields to remove, if no names are
+            specified all fields will be mapped
+        spatial_response_norm : 'peak', 'area', or 'none'
+            How to normalize the beam peak will make the peak pixel equal to 1,
+            area will make the total volume under the PSF equal to 1, none will
+            apply no normalization (assumes this has been handled by the
+            spatial_response function itself)
+        kernel_size : int
+            The number of pixels (per side) to use when generating images of the
+            PSF. Pixel size will match the pixel size of the field. This should
+            be large enough to ensure the PSF is represented down to well below
+            the peak. Only kernel_size or beam should be specified. Default will
+            be 10 * the best resolution of the instrument
+        beam : simim.map.Grid
+            A 3d grid describing the PSF in spatial pixels matched in size to
+            those of the field(s) and a number of spectral pixels matched to the
+            field(s). Only kernel_size or beam should be specified.
+        pad : int (optional)
+            Specify a number of cells to zero pad onto the each side of the
+            field during convolution with the beam.
         """
 
-        # Check detector_names
-        if len(detector_names) == 0:
-            detector_names = self.detector_names
+        # Check field_names
+        if len(field_names) == 0:
+            field_names = self.field_names
+        else:
+            self._check_fields(*field_names)
     
-
-
-        # Either speciffy kernel_size and spatial_response_norm or specify beam (with a grid containing the beam)
-        # Note that beams provided using beam will not be re-normalized.
-
+        # Verify that some way of generating the beam was specified
+        if beam is None and kernel_size is None and self.best_spatial_res is None:
+            raise ValueError("Not enough infromation to generate a beam - specify beam or kernel_size or set self.best_spatial_res")
         if beam is not None and kernel_size is not None:
-            raise ValueError("If beam is specified, kernel_size should be left as None")
+            raise ValueError("Only one of beam or kernel_size should be provided")
 
+        # Determine how many convolutions to do...
+        input_beam = beam is not None
+        if input_beam:
+            detector_groups = [self.detector_names]
+        else:
+            detector_groups = self._find_spatial_clones()            
 
+        # Iterate through fields
+        for f in field_names:
+            field = self.fields[f]
 
-        if beam is None:
-            beam = self._setup_beam(kernel_size=None,spatial_response_norm=spatial_response_norm)
-                    
-        if _check and beam.grid.ndim != 4:
-            raise ValueError("Beam does not have three dimensions")
+            all_detector_maps = [None for i in range(len(self.detector_names))]
+            
+            for group in detector_groups:
+                # Evaluate PSF if necessary
+                if not input_beam:
+                    beam = self._setup_beam(field=field,
+                                            spatial_response=self.detectors[group[0]].spatial_response,
+                                            spatial_kwargs=self.detectors[group[0]].spatial_kwargs,
+                                            spatial_response_norm=spatial_response_norm,
+                                            kernel_size=kernel_size)
 
-        # Convolve with beam
-        self.map = self.field.convolve(beam,ax=(0,1),in_place=False,pad=pad)
+                # Convolve with PSF
+                conv_field = field.convolve(beam, ax=(0,1), in_place=False, pad=pad)
 
-        # Evaluate spectral response over frequency axis
-        spec = self.spectral_response(beam.axes_centers[2],**self.spectral_kwargs)
+                # For each detector evaluate the spectral response and sample
+                for d in group:
+                    spectral_response = self.detectors[d].spectral_response(conv_field.axes_centers[2],**self.detectors[d].spectral_kwargs)
+                    detector_map = conv_field.collapse_dimension(ax=2,in_place=False,weights=spectral_response,mode='average')
+                    idx = self.detector_names.index(d)
+                    all_detector_maps[idx] = detector_map.grid
 
-        # Collapse along the third dimension using spectral response
-        self.map = self.map.collapse_dimension(ax=2,weights=spec,mode='average',in_place=True)
-        self.map_initialized = True
+            all_detector_maps = np.stack(all_detector_maps,axis=2)[:,:,:,0] # Couldn't figure out why stacking was adding another dim, indexing is a hacky fix
 
+            # Hijack last 2d grid and turn it into a grid with each map as a property
+            detector_map.grid = all_detector_maps
+            detector_map.n_properties = len(self.detector_names)
 
-
-        self.maps_consistent[fieldname] = True
-
-
+            # Save the result
+            self.maps[f] = detector_map
+            self.maps_consistent[f] = True
 
 
     @pltdeco
@@ -892,68 +979,6 @@ class Instrument:
 # #### OLD VERSIONS:
 
 # class Detector():
-#     def _setup_beam(self,kernel_size=None,spatial_response_norm='peak'):
-
-#         if kernel_size is None:
-#             kernel_size = np.copy(self.field.side_length[:2])
-#         kernel_size = np.array(kernel_size)
-#         if len(kernel_size) != 2:
-#             raise ValueError("kernel_size must have length 2 (xsize, ysize)")
-        
-#         # Check that the value of norm is recognized
-#         if spatial_response_norm not in ['peak','area','none']:
-#             raise ValueError("spatial_response_norm must be one of 'peak', 'area', 'none'")
-        
-#         # Set up axes of beam convolution kernel
-#         center = [0,0,self.field.center_point[2]]
-#         side_length = [kernel_size[0],kernel_size[1],self.field.side_length[2]]
-
-#         # Evaluate beam response over kernel axes
-#         beam = Grid(n_properties=1,center_point=center,side_length=side_length,pixel_size=self.field.pixel_size,axunits=self.field.axunits,gridunits=self.field.gridunits)
-#         beam.init_grid()
-
-#         shape = beam.grid.shape
-#         beam.grid = np.expand_dims(self.spatial_response(beam.axes_centers[0],beam.axes_centers[1],beam.axes_centers[2],**self.spatial_kwargs),-1)
-#         if beam.grid.shape != shape:
-#             raise ValueError("spatial_response does not produce an array of the correct shape")
-
-#         if spatial_response_norm == 'peak':
-#             beam.grid = beam.grid / np.max(beam.grid,axis=(0,1,3)).reshape(1,1,-1,1)
-#         if spatial_response_norm == 'area':
-#             beam.grid = beam.grid / np.sum(beam.grid,axis=(0,1,3)).reshape(1,1,-1,1)
-#         if spatial_response_norm == 'none':
-#             pass
-
-#         return beam
-
-#     def map_field(self,kernel_size=None,spatial_response_norm='peak',beam=None,pad=None,_check=True):
-#         # Either speciffy kernel_size and spatial_response_norm or specify beam (with a grid containing the beam)
-#         # Note that beams provided using beam will not be re-normalized.
-
-#         if beam is not None and kernel_size is not None:
-#             raise ValueError("If beam is specified, kernel_size should be left as None")
-
-#         # Set off so it only has to be done once when an Instrument object iterates over many detectors
-#         if _check:
-#             if not self.field_initialized:
-#                 raise ValueError("No field specified - cannot map field")
-
-#         if beam is None:
-#             beam = self._setup_beam(kernel_size=None,spatial_response_norm=spatial_response_norm)
-                    
-#         if _check and beam.grid.ndim != 4:
-#             raise ValueError("Beam does not have three dimensions")
-
-#         # Convolve with beam
-#         self.map = self.field.convolve(beam,ax=(0,1),in_place=False,pad=pad)
-
-#         # Evaluate spectral response over frequency axis
-#         spec = self.spectral_response(beam.axes_centers[2],**self.spectral_kwargs)
-
-#         # Collapse along the third dimension using spectral response
-#         self.map = self.map.collapse_dimension(ax=2,weights=spec,mode='average',in_place=True)
-#         self.map_initialized = True
-
 #     def sample(self,positions,dt,properties=None,signal=True,noise=True):
                 
 #         if signal and noise:

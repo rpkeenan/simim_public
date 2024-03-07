@@ -307,6 +307,40 @@ def test_field_index():
     with pytest.raises(Exception):
         i1.add_field(g,field_property_idx=-1)
 
+# Errors should be raised for Grid not having high enough spatial resolution in 
+# any dimension
+def test_field_res():
+    i1 = Instrument(spectral_unit='Hz',spatial_unit='rad',flux_unit='Jy',best_spatial_res=4,best_spectral_res=4)
+    
+    # This should work, but raise a warning
+    g = Grid(1, (5,5,5), (10,10,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    with pytest.warns():
+        i1.add_field(g)
+
+    # Spectral too large
+    g = Grid(1, (5,5,5), (10,10,10), (1,1,5), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    with pytest.raises(Exception):
+        with pytest.warns(): # Also raises a warning since spatial pixel check happens first
+            i1.add_field(g)
+
+    # Spatial too large
+    g = Grid(1, (5,5,5), (10,10,10), (1,5,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    with pytest.raises(Exception):
+        i1.add_field(g)
+
+    g = Grid(1, (5,5,5), (10,10,10), (5,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    with pytest.raises(Exception):
+        i1.add_field(g)
+
+    g = Grid(1, (5,5,5), (10,10,10), (5,5,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    with pytest.raises(Exception):
+        i1.add_field(g)
+
 # check_fields should know what fields have been added
 def test_check_fields():
     i1 = Instrument(spatial_unit='rad',spectral_unit='Hz',flux_unit='Jy')
@@ -351,3 +385,134 @@ def test_add_remove_fields():
     assert i1.field_names == ['0','tony']
     assert len(i1.fields) == 2
     assert i1.field_counter == 3
+
+
+# Make sure objects with same psf are identified correctly
+def test_detector_setups():
+    i1 = Instrument(default_spatial_response='gauss',
+                default_spectral_response='gauss',
+                default_noise_function='none',
+                default_spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi},
+                default_spectral_kwargs={'fwhm':1e9,'freq0':100e9},
+                default_noise_kwargs={})
+    
+    # Use all defaults
+    i1.add_detector(name='default',nominal_frequency=1e9,)
+
+    # Overwrite kwargs w identical values
+    i1.add_detector(name='kwargs',
+                    nominal_frequency=1e9,
+                    spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi})
+
+    # Overwrite functions, with identical values
+    i1.add_detector(name='functions',
+                    nominal_frequency=1e9,
+                    spatial_response='gauss', spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi})
+
+    # Something different
+    i1.add_detector(name='dif1',nominal_frequency=1e9,
+                    spatial_response='specgauss', spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi,'freq0':100e9})
+    
+    # Same thing, with function passed differently
+    i1.add_detector(name='dif2',nominal_frequency=1e9,
+                    spatial_response=gauss_psf_freq_dependent, spatial_kwargs={'fwhmx':1/60/180*np.pi,'fwhmy':1/60/180*np.pi,'freq0':100e9})
+
+    # Different kwargs
+    i1.add_detector(name='difkw1',
+                    nominal_frequency=1e9,
+                    spatial_kwargs={'fwhmx':2/60/180*np.pi,'fwhmy':2/60/180*np.pi})
+    i1.add_detector(name='difkw2',
+                    nominal_frequency=1e9,
+                    spatial_kwargs={'fwhmx':2/60/180*np.pi,'fwhmy':2/60/180*np.pi})
+    
+    # Test
+    clones = i1._find_spatial_clones()
+
+    assert clones == [['default','kwargs','functions'],['dif1','dif2'],['difkw1','difkw2']]
+
+def test_beam():
+    i1 = Instrument(default_spatial_response='gauss',
+            default_spectral_response='gauss',
+            default_noise_function='none',
+            default_spatial_kwargs={'fwhmx':1,'fwhmy':1},
+            default_spectral_kwargs={'fwhm':1,'freq0':100},
+            default_noise_kwargs={},
+            best_spatial_res=5,
+            spatial_unit='rad',spectral_unit='Hz',flux_unit='Jy')
+    
+    i1.add_detector(nominal_frequency=100)
+
+    g = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    i1.add_field(g)
+
+    beam = i1._setup_beam(g,i1.detectors['0'].spatial_response,i1.detectors['0'].spatial_kwargs,'peak')
+    assert beam.n_dimensions == 3
+    assert beam.n_properties == 1
+    assert beam.grid.ndim == 4
+    assert np.all(beam.pixel_size == g.pixel_size)
+    assert beam.side_length[2] == g.side_length[2]
+    assert beam.grid.shape == (51,51,10,1)
+    assert beam.grid.max() == 1
+
+    # Do a second time to make sure nothing weird happens
+    beam = i1._setup_beam(g,i1.detectors['0'].spatial_response,i1.detectors['0'].spatial_kwargs,'peak')
+    assert beam.n_dimensions == 3
+    assert beam.n_properties == 1
+    assert beam.grid.ndim == 4
+    assert np.all(beam.pixel_size == g.pixel_size)
+    assert beam.side_length[2] == g.side_length[2]
+    assert beam.grid.shape == (51,51,10,1)
+    assert beam.grid.max() == 1
+
+def test_map():
+    i1 = Instrument(default_spatial_response='gauss',
+        default_spectral_response='gauss',
+        default_noise_function='none',
+        default_spatial_kwargs={'fwhmx':1,'fwhmy':1},
+        default_spectral_kwargs={'fwhm':1,'freq0':100},
+        default_noise_kwargs={},
+        best_spatial_res=5,
+        spatial_unit='rad',spectral_unit='Hz',flux_unit='Jy')
+    
+    i1.add_detector(name='det',nominal_frequency=100)
+
+    g = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g.init_grid()
+    i1.add_field(g,name='f1')
+
+    i1.map_fields('f1')
+
+    assert i1.maps_consistent['f1']
+    assert np.all([type(i1.maps[f])==Grid for f in i1.maps])
+    assert np.all([i1.maps[f].grid.ndim==3 for f in i1.maps])
+    assert np.all([i1.maps[f].grid.shape[2]==1 for f in i1.maps])
+
+    g2 = Grid(1, (50,50,100), (100,100,10), (1,1,1), axunits=['rad','rad','Hz'], gridunits='Jy')
+    g2.init_grid()
+    i1.add_field(g2,name='f2')
+
+    assert i1.maps_consistent['f1']
+    assert i1.maps_consistent['f2'] == False
+
+    i1.map_fields()
+
+    assert i1.maps_consistent['f1']
+    assert i1.maps_consistent['f2']
+    assert np.all([type(i1.maps[f])==Grid for f in i1.maps])
+    assert np.all([i1.maps[f].grid.ndim==3 for f in i1.maps])
+    assert np.all([i1.maps[f].grid.shape[2]==1 for f in i1.maps])
+
+    i1.add_detector(name='det2',nominal_frequency=100)
+    
+    assert i1.maps_consistent['f1'] == False
+    assert i1.maps_consistent['f2'] == False
+
+    i1.map_fields()
+    assert i1.maps_consistent['f1']
+    assert i1.maps_consistent['f2']
+    assert np.all([type(i1.maps[f])==Grid for f in i1.maps])
+    assert np.all([i1.maps[f].grid.ndim==3 for f in i1.maps])
+    assert np.all([i1.maps[f].grid.shape[2]==2 for f in i1.maps])
+
+
