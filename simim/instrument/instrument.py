@@ -13,8 +13,6 @@ from simim.instrument.spectral_response import gauss_response, boxcar_response
 from simim.map import GridFromAxesAndFunction
 
 # Refactor Outline:
-##     method to sample spectral cube over specified detectors
-##     methods to sample just noise/just signal
 ##     * method to plot detector response (out of all detectors) next to the map of a field from that detector (optional: animate)
 ## Detector class - wraps around instrument to setup a single-detector instrument, redefines methods to do the one det versions
 
