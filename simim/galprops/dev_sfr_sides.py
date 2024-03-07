@@ -153,7 +153,7 @@ class bethermin17_base():
             self.init_stellarmass_function = True
     
     def _make_stellarmass_function(self, haloprop, halomassmin):
-        handler = sim.simhandler.simhandler(self.sim)
+        handler = sim.simhandler.SimHandler(self.sim)
         if haloprop not in ['vmax','mass','auto']:
             raise ValueError("haloprop used for abundance matching must b one of 'vmax', 'mass', 'auto'")
         if haloprop == 'auto':
