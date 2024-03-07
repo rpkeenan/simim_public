@@ -7,6 +7,7 @@ import astropy.units as u
 
 from matplotlib import animation
 
+from simim.map import Gridder
 from simim._paths import _SimIMPaths
 from simim._handlers import Handler
 from simim._pltsetup import *
@@ -77,10 +78,15 @@ class LCHandler(Handler):
         self.open_angle = self.metadata['open angle']
         self.shape = self.metadata['shape']
         self.aspect_ratio = self.metadata['aspect ratio']
+        self.minimum_redshift = self.metadata['minimum redshift']
+        self.maximum_redshift = self.metadata['maximum redshift']
         self.extra_props['cosmo'] = self.cosmo
         self.extra_props['open_angle'] = self.open_angle
         self.extra_props['shape'] = self.shape
         self.extra_props['aspect_ratio'] = self.aspect_ratio
+        self.extra_props['minimum redshift'] = self.minimum_redshift
+        self.extra_props['maximum redshift'] = self.maximum_redshift
+
 
     def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=False):
         """Compute the comoving volume of the light cone
@@ -113,7 +119,7 @@ class LCHandler(Handler):
         if redshift_min == None:
             redshift_min=self.metadata['minimum redshift']
         if redshift_max == None:
-            redshift_max=self.metadata['minimum redshift']
+            redshift_max=self.metadata['maximum redshift']
         if shape == None:
             shape=self.metadata['shape']
         if open_angle == None:
@@ -142,22 +148,15 @@ class LCHandler(Handler):
                 raise ValueError("specified box does not fit in circular lightcone")
 
         # Figure out the volume
-        dmin = self.cosmo.comoving_distance(redshift_min).value
-        dmax = self.cosmo.comoving_distance(redshift_max).value
-        length = dmax-dmin
-
-        dtmin = self.cosmo.comoving_transverse_distance(redshift_min).value
-        dtmax = self.cosmo.comoving_transverse_distance(redshift_max).value
-
         if shape == 'box':
-            area0 = open_angle * open_angle * aspect_ratio
+            area = open_angle * open_angle * aspect_ratio
         elif shape == 'circle':
-            area0 = np.pi * (open_angle/2)**2
+            area = np.pi * (open_angle/2)**2
 
-        areamin = area0 * dtmin**2
-        areamax = area0 * dtmax**2
+        v2 = self.cosmo.comoving_volume(redshift_max).value
+        v1 = self.cosmo.comoving_volume(redshift_min).value
+        volume = (v2-v1) * area/(4*np.pi)
 
-        volume = (areamin+areamax)/2 * length
         if in_h_units:
             volume *= self.h**3
 
@@ -202,6 +201,96 @@ class LCHandler(Handler):
         self.inds_active = np.copy(inds_active_save)
 
         return redshift_bins, vals
+
+    def grid(self, *property_names, 
+             restfreq=None,
+             in_h_units=False,use_all_inds=False,
+             res=None,ralim=None,declim=None,zlim=None,
+             norm=None):
+        """Place selected properties into a 3d grid
+        
+        Uses the properties of the array to construct a position
+        (ra,dec,redshift)-value (property_names) grid. Only required argument is
+        a valid property name or names. Additional arguments can specify the
+        limits and resolution of the grid. Passing a line rest frequency to
+        restfreq will cause the grid to be constructed in terms of the
+        corresponding observed frequencies instead of redshift.
+
+        Parameters
+        ----------
+        property_names : str
+            The name or names of properties in the Handler instance
+        restfreq : float
+            A rest frequency to use for converting the third axis from redshift
+            to frequency. The returned axis will be constructed as
+            restfreq/(1+z)
+        in_h_units : bool, default=False
+            If True, positions and property values fed to the gridder will be in
+            units including little h. If False, little h dependence will be
+            removed.
+        use_all_inds : bool, default=False
+            If True function all halos will be gridded, otherwise only active
+            halos will be included.
+        res : float, optional
+            The resolution for the grid in Mpc (if in_h_units==False) or Mpc/h
+            (if in_h_units==True). If no value is specified, it will default to
+            1/100th of the box edge length
+        ralim, decylim, zlim : tuples, optional
+            Tuples containing minimum and maximum values of the grid along the
+            x, y, and z axes, in units of Mpc (if in_h_units==False) or Mpc/h
+            (if in_h_units==True). If no values are specified the defaults are
+            (0, box edge length).
+        norm : None, float
+            Apply a normalization to the gridded values. If a float is given
+            each cell will multiplied by the float
+
+        Returns
+        -------
+        grid : simim.map.grid instance
+            The gridded properties
+        """
+
+        x = self.return_property('ra',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        y = self.return_property('dec',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        z = self.return_property('redshift',in_h_units=in_h_units,use_all_inds=use_all_inds)
+        if restfreq is not None:
+            z = restfreq/(1+z)
+        props = np.array([self.return_property(p,in_h_units=in_h_units,use_all_inds=use_all_inds) for p in property_names]).T
+        
+        if ralim is None:
+            ralim = (-self.open_angle/2,self.open_angle/2)
+        if declim is None:
+            declim = (-self.open_angle*self.aspect_ratio/2,self.open_angle*self.aspect_ratio/2)
+        if zlim is None:
+            if restfreq is not None:
+                zlim = (restfreq/(1+self.maximum_redshift), restfreq/(1+self.minimum_redshift))
+            else:
+                zlim = (self.minimum_redshift, self.maximum_redshift)
+
+        c = []
+        l = []
+
+        for lim in ralim,declim,zlim:
+            if len(lim) != 2:
+                raise ValueError("ralim, declim, and zlim must each be None or have length = 2")
+            else:
+                c.append((lim[0]+lim[1])/2)
+                l.append(np.max(lim) - np.min(lim))
+
+        if res is None:
+            res = [x/100 for x in l]
+
+        grid = Gridder(np.array([x, y, z]).T, props,
+                       center_point=c, side_length=l,
+                       pixel_size=res)
+
+        if norm is None:
+            norm = 1        
+        grid.grid *= norm
+
+        return grid
+
+
 
     @pltdeco
     def animate(self, save=None, use_all_inds=False, colorpropname='mass',colorscale='log', sizepropname='mass',sizescale='log',in_h_units=False):
@@ -263,9 +352,6 @@ class LCHandler(Handler):
         colorrange = np.ptp(colorprop)
         colors = cmap((colorprop-colormin)/colorrange)
 
-        sm = plt.cm.ScalarMappable(cmap=cmap)
-        sm.set_array([colormin,(colormin+colorrange)])
-
         # Set up sizes
         sizeprop = self.return_property(sizepropname,use_all_inds=use_all_inds,in_h_units=in_h_units)
         if sizescale == 'log':
@@ -278,8 +364,19 @@ class LCHandler(Handler):
 
         # set up plots
         figure = plt.figure(figsize=(8,8))
+        figure.subplots_adjust(left=.05,right=.9,bottom=.15,top=.95)
         title = plt.suptitle('')
         # figure.legend(handles=[p0,p1,p2,p3,p4,p5],loc=8,bbox_to_anchor=(.5,0),ncol=3,markerscale=.5,fontsize='small')
+
+        # Colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap)
+        sm.set_array([colormin,(colormin+colorrange)])
+
+        ax_cb = figure.add_axes([.91,.15,.03,.8])
+        if colorscale == 'log':
+            figure.colorbar(sm,ax=ax_cb,label='log '+colorpropname)
+        else:
+            figure.colorbar(sm,ax=ax_cb,label=colorpropname)
 
         # cone plot
         plot_cone = plt.subplot(212)
@@ -287,12 +384,6 @@ class LCHandler(Handler):
 
         cone = plot_cone.scatter(z, x, s=1, c=colors)
         box, = plot_cone.plot([], [], color='#ff7f0e')
-
-        if colorscale == 'log':
-            figure.colorbar(sm,label='log '+colorpropname)
-        else:
-            figure.colorbar(sm,label=colorpropname)
-
 
         # physical cross section plot
         plot_xy = plt.subplot(222)
@@ -314,7 +405,6 @@ class LCHandler(Handler):
             radec_outline, = plot_radec.plot(obs_lim_xy/2*np.cos(theta), obs_lim_xy/2*np.sin(theta), color='#ff7f0e')
         else:
             radec_outline, = plot_radec.plot(obs_lim_xy/2*edgepaternx, obs_lim_xy/2*edgepaterny, color='#ff7f0e')
-
 
         # Initialization for animation_init
         def animation_init():

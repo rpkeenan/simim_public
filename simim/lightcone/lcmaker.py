@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 
 from simim._pltsetup import *
 from simim._paths import _SimIMPaths
-from simim.siminterface.simhandler import simhandler
+from simim.siminterface import SimHandler
 from simim.siminterface._sims import _checksim
 
 class LCMaker():
@@ -75,9 +75,9 @@ class LCMaker():
             raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
         self.sim = sim
 
-        if sim not in paths.lightcones.keys():
+        if sim not in paths.lcs.keys():
             paths._newlcpath(self.sim)
-        self.lc_path = os.path.join(paths.lightcones[sim], name)
+        self.lc_path = os.path.join(paths.lcs[sim], name)
         if os.path.exists(self.lc_path):
             print("A file for light cones of this name already exists.")
             print("Light cones already saved may be overwritten.")
@@ -105,7 +105,7 @@ class LCMaker():
         self.minimum_mass = minimum_mass
 
         # Load some sim data and the class to handle extracting data
-        self.sim_handler = simhandler(self.sim)
+        self.sim_handler = SimHandler(self.sim)
         self.metadata = self.sim_handler.metadata
         self.snap_meta = self.sim_handler.snap_meta
         self.snap_keys_all = self.sim_handler.extract_snap_keys()
@@ -251,8 +251,7 @@ class LCMaker():
         return pa, pa_transformation_matrix
 
     def build_lightcones(self,
-                         n,
-                         resume_idx,
+                         n=1,
                          rng=np.random.default_rng()):
         """Code to construct a specified number of light cones
 

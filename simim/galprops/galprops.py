@@ -77,7 +77,7 @@ class MultiProp():
 
         Parameters
         ----------
-        target : lightcone.handler.handler or siminterface.simhandler.snaphandler class
+        target : lightcone.handler.handler or siminterface.simhandler.SnapHandler class
             The lightcone or snapshot to evaluate the property for
         use_all_inds : bool
             If True values will be assigned for all halos, otherwise only
@@ -193,7 +193,7 @@ class Prop(MultiProp):
 
         Parameters
         ----------
-        target : lightcone.handler.handler or siminterface.simhandler.snaphandler class
+        target : lightcone.handler.handler or siminterface.simhandler.SnapHandler class
             The lightcone or snapshot to evaluate the property for
         use_all_inds : bool
             If True values will be assigned for all halos, otherwise only

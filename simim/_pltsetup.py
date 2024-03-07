@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import rc_context
 from matplotlib import colormaps
+from functools import wraps
 
 pltsty = {
     'font.size' : 18,
@@ -20,6 +21,7 @@ pltsty = {
 
 # Matplotlib style sheet and wrapper
 def pltdeco(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         with rc_context(pltsty):
             return func(*args, **kwargs)
