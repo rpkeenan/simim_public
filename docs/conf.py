@@ -57,7 +57,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
-# html_logo = 'images/logo.png'
+html_logo = 'images/simim_logo.png'
 # html_favicon = 'images/small_logo.ico'
 
 # -- Options for autodoc -------------------------------------------------
