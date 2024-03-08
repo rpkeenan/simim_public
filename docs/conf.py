@@ -58,7 +58,7 @@ html_theme_options = {
 # html_static_path = ['_static']
 
 html_logo = 'images/simim_logo.png'
-# html_favicon = 'images/small_logo.ico'
+html_favicon = 'images/simim_favicon.png'
 
 # -- Options for autodoc -------------------------------------------------
 autoclass_content = "both"
