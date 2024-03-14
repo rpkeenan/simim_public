@@ -44,6 +44,7 @@ class Handler():
 
             self.nhalos_all = file[groupname]['mass'].shape[0]
 
+
         self.properties_loaded = {}
         self.properties_generated = []
 
@@ -52,6 +53,7 @@ class Handler():
         # Initialize the indices of active properties
         self.inds_all = np.arange(self.nhalos_all).astype('int')
         self.inds_active = np.arange(self.nhalos_all).astype('int')
+        self.nhalos_active = len(self.inds_active)
 
     def extract_keys(self,set='any'):
         """Get the fields attached to a file
@@ -409,6 +411,8 @@ class Handler():
                 self.inds_active = inds
             else:
                 self.inds_active = np.intersect1d(inds,self.inds_active)
+        
+        self.nhalos_active = len(self.inds_active)
 
     def eval_stat(self, stat_function, kwargs, kw_remap={}, other_kws={},
                   use_all_inds=False,
@@ -483,7 +487,7 @@ class Handler():
         return vals
 
     @pltdeco
-    def plot(self, xname, yname,
+    def plot(self, xname, *ynames,
              use_all_inds = False,
              save=None, axkws={}, plotkws={},in_h_units=False):
         """Make a scatter plot of two properties
@@ -492,24 +496,26 @@ class Handler():
         ----------
         xname : str
             The name of the field to use as the x-value
-        yname : str
-            The name of the field to use as the y-value
+        *ynames : str
+            The name(s) of the field(s) to use as the y-value. Multiple fields
+            can be given and will be plotted on the same axes against a single x
+            vale
         use_all_inds : bool or 'compare', optional
-            If True values will be assigned for all halos, otherwise only
-            active halos will be evaluated, and others will be assigned nan.
-            If 'compare', both sets of indices will be plotted to allow
-            easy comparison.
+            If True values will be assigned for all halos, otherwise only active
+            halos will be evaluated, and others will be assigned nan. If
+            'compare', both sets of indices will be plotted to allow easy
+            comparison.
         save : str, optional
             If specified, the plot will be saved to the given location
         axkws : dict, optional
-            A dictionary of keyword args and values that will be fed to
-            ax.set() when creating the plot axes
+            A dictionary of keyword args and values that will be fed to ax.set()
+            when creating the plot axes
         plotkws : dict, optional
             A dictionary of keyword args and values that will be fed to
             plt.plot() when creating the plot data
         in_h_units : bool (default is False)
-            If True, values will be plotted in units including little h.
-            If False, little h dependence will be removed.
+            If True, values will be plotted in units including little h. If
+            False, little h dependence will be removed.
 
         Returns
         -------
@@ -525,49 +531,53 @@ class Handler():
         if 'marker' not in plotkws:
             plotkws['marker'] = '.'
 
-        if use_all_inds == 'compare':
-            x = self.return_property(xname,use_all_inds=True,in_h_units=in_h_units)
-            y = self.return_property(yname,use_all_inds=True,in_h_units=in_h_units)
-            ax.plot(x,y,color='k',**plotkws)
-            x = self.return_property(xname,use_all_inds=False,in_h_units=in_h_units)
-            y = self.return_property(yname,use_all_inds=False,in_h_units=in_h_units)
-            ax.plot(x,y,color='r',**plotkws)
-        else:
-            x = self.return_property(xname,use_all_inds=use_all_inds,in_h_units=in_h_units)
-            y = self.return_property(yname,use_all_inds=use_all_inds,in_h_units=in_h_units)
-            ax.plot(x,y,**plotkws)
+        for yn in ynames:
+            if use_all_inds == 'compare':
+                x = self.return_property(xname,use_all_inds=True,in_h_units=in_h_units)
+                y = self.return_property(yn,use_all_inds=True,in_h_units=in_h_units)
+                ax.plot(x,y,color='k',**plotkws,label=yn)
+                x = self.return_property(xname,use_all_inds=False,in_h_units=in_h_units)
+                y = self.return_property(yn,use_all_inds=False,in_h_units=in_h_units)
+                ax.plot(x,y,color='r',**plotkws)
+            else:
+                x = self.return_property(xname,use_all_inds=use_all_inds,in_h_units=in_h_units)
+                y = self.return_property(yn,use_all_inds=use_all_inds,in_h_units=in_h_units)
+                ax.plot(x,y,**plotkws,label=yn)
 
+        if len(ynames) > 1:
+            ax.legend()
         if save != None:
             plt.savefig(save)
         plt.show()
 
     @pltdeco
-    def hist(self, property_name,
+    def hist(self, *property_names,
              use_all_inds = False,
              logtransform=False, save=None, axkws={}, plotkws={},in_h_units=False):
         """Make a histogram of a property
 
         Parameters
         ----------
-        property_name : str
-            The name of the field to use
+        *property_names : str
+            The name(s) of the field(s) to use, multiple fields can be given and
+            will be plotted on the same axes with the same settings
         logtransform : bool, optional
-            If set to True, will take the log of the property before
-            making the histogram
+            If set to True, will take the log of the property before making the
+            histogram
         use_all_inds : bool, optional
-            If True values will be assigned for all halos, otherwise only
-            active halos will be evaluated, and others will be assigned nan.
+            If True values will be assigned for all halos, otherwise only active
+            halos will be evaluated, and others will be assigned nan.
         save : str, optional
             If specified, the plot will be saved to the given location
         axkws : dict, optional
-            A dictionary of keyword args and values that will be fed to
-            ax.set() when creating the plot axes
+            A dictionary of keyword args and values that will be fed to ax.set()
+            when creating the plot axes
         plotkws : dict, optional
             A dictionary of keyword args and values that will be fed to
             plt.hist() when creating the plot data
         in_h_units : bool (default is False)
-            If True, values will be plotted in units including little h.
-            If False, little h dependence will be removed.
+            If True, values will be plotted in units including little h. If
+            False, little h dependence will be removed.
 
 
         Returns
@@ -575,13 +585,18 @@ class Handler():
         None
         """
 
-        x = self.return_property(property_name,use_all_inds=use_all_inds,in_h_units=in_h_units)
-        if logtransform:
-            x = np.log10(x)
-
         fig,ax = plt.subplots()
         ax.set(**axkws)
-        ax.hist(x,**plotkws)
+
+        for pn in property_names:
+            x = self.return_property(pn,use_all_inds=use_all_inds,in_h_units=in_h_units)
+            if logtransform:
+                x = np.log10(x)
+
+            ax.hist(x,**plotkws,label=pn)
+        
+        if len(property_names) > 1:
+            ax.legend()
         if save != None:
             plt.savefig(save)
         plt.show()
