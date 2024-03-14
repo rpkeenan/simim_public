@@ -485,7 +485,7 @@ class Handler():
     @pltdeco
     def plot(self, xname, yname,
              use_all_inds = False,
-             save=None, axkws={}, plotkws={},in_h_units=True):
+             save=None, axkws={}, plotkws={},in_h_units=False):
         """Make a scatter plot of two properties
 
         Parameters
