@@ -39,6 +39,20 @@ The prescriptions are implemented both as standalone functions, and as ``Prop`` 
 The ``Prop`` instances are automatically available within the ``simim.galprops`` module. 
 Functional versions must be imported from appropriate sub-modules.
 
+Stellar Masses and Star Formation Rates
+---------------------------------------
+
+.. currentmodule:: simim.galprops
+.. automodule:: simim.galprops.sfr_behroozi13
+    :members:
+
+.. automodule:: simim.galprops.sfr_bethermin17
+    :members:
+
+.. automodule:: simim.galprops.sfr_ir
+    :members:
+
+
 Spectral Line Luminosities
 --------------------------
 
