@@ -175,6 +175,61 @@ def test_add_from_cat():
     assert np.isclose(g.grid[1,9,1], .1)
     assert np.isclose(g.grid[6,8,1], .1)
 
+def test_add_from_cat_property_idx():
+    g = Grid(1, (5,5), (10,10), (1,1))
+    g.init_grid()
+    positions = np.array([[0.5,1.4],[1.2,9.9],[6.2,8.8]])
+    values = 0.1*np.ones(len(positions))
+    
+    g.add_from_cat(positions=positions, property_idx=0)
+
+    assert np.sum(g.grid) == 3
+    assert g.grid[0,1,0] == 1
+    assert g.grid[1,9,0] == 1
+    assert g.grid[6,8,0] == 1
+
+    g.add_from_cat(positions=positions, values=values, property_idx=0)
+    assert np.isclose(np.sum(g.grid), 3.3)
+    assert np.isclose(g.grid[0,1,0], 1.1)
+    assert np.isclose(g.grid[1,9,0], 1.1)
+    assert np.isclose(g.grid[6,8,0], 1.1)
+
+    g.add_from_cat(positions=positions, values=values, new_props=True)
+    assert np.isclose(np.sum(g.grid), 3.6)
+    assert np.isclose(g.grid[0,1,0], 1.1)
+    assert np.isclose(g.grid[1,9,0], 1.1)
+    assert np.isclose(g.grid[6,8,0], 1.1)
+    assert np.isclose(g.grid[0,1,1], .1)
+    assert np.isclose(g.grid[1,9,1], .1)
+    assert np.isclose(g.grid[6,8,1], .1)
+
+    g.add_from_cat(positions=positions, values=values, property_idx=0)
+    assert np.isclose(np.sum(g.grid), 3.9)
+    assert np.isclose(g.grid[0,1,0], 1.2)
+    assert np.isclose(g.grid[1,9,0], 1.2)
+    assert np.isclose(g.grid[6,8,0], 1.2)
+    assert np.isclose(g.grid[0,1,1], .1)
+    assert np.isclose(g.grid[1,9,1], .1)
+    assert np.isclose(g.grid[6,8,1], .1)
+
+    g.add_from_cat(positions=positions, values=values, property_idx=1)
+    assert np.isclose(np.sum(g.grid), 4.2)
+    assert np.isclose(g.grid[0,1,0], 1.2)
+    assert np.isclose(g.grid[1,9,0], 1.2)
+    assert np.isclose(g.grid[6,8,0], 1.2)
+    assert np.isclose(g.grid[0,1,1], .2)
+    assert np.isclose(g.grid[1,9,1], .2)
+    assert np.isclose(g.grid[6,8,1], .2)
+
+    g.add_from_cat(positions=positions, values=np.array([values,values]).T, property_idx=None)
+    assert np.isclose(np.sum(g.grid), 4.8)
+    assert np.isclose(g.grid[0,1,0], 1.3)
+    assert np.isclose(g.grid[1,9,0], 1.3)
+    assert np.isclose(g.grid[6,8,0], 1.3)
+    assert np.isclose(g.grid[0,1,1], .3)
+    assert np.isclose(g.grid[1,9,1], .3)
+    assert np.isclose(g.grid[6,8,1], .3)
+
 def test_add_from_cat_edges():
     g = Grid(1, (5,5), (10,10), (1,1))
     g.init_grid()
