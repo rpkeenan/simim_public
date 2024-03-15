@@ -1,4 +1,5 @@
 from typing import Callable
+from numpy.typing import ArrayLike
 import warnings
 import os
 
@@ -551,7 +552,7 @@ class Grid():
         savefunc(path,**save_data)
 
 
-    def add_from_cat(self,positions,values=None,new_props=False,property_idx=None):
+    def add_from_cat(self,positions,values=None,new_props=False,properties=None):
         """Add values to the grid
 
         Parameters
@@ -568,9 +569,9 @@ class Grid():
             If True, this method will create new entries along the poperty
             dimension for each set of values given rather than adding them
             on top of existing values. Default is False.
-        property_idx : int (optional)
+        properties : int or list of ints (optional)
             If specified, the values will only be added to the specified property
-            index. If None, values will be added to all property indices.
+            indices. If None, values will be added to all property indices.
             Ignored if new_props = True
         """
         
@@ -626,15 +627,291 @@ class Grid():
                 self.n_properties = self.n_properties + new_n_properties
 
             else:
-                property_idx = self._check_property_input(property_idx)
-                if values.shape[1] != len(property_idx):
-                        raise ValueError("Values array does not contain the correct number of properties.")
-                positions += (property_idx,)
+                properties = self._check_property_input(properties)
+                if values.shape[1] != len(properties) and values.shape[1] != 1:
+                    raise ValueError("Values array does not contain the correct number of properties.")
 
-                np.add.at(self.grid,positions,values.flatten())
+                for ip in properties:
+                    if values.shape[1] == 1:
+                        v = values.flatten()
+                    else:
+                        v = values[:,ip]
+                    np.add.at(self.grid,positions+(ip,),v)
 
             # Count the number of objects
             self.n_objects += len(values)
+
+
+    def add_from_pos_plus_array(self, positions: ArrayLike, values: ArrayLike, ax: int = -1, new_prop: bool = False, properties: int = None):
+        """Add values to a grid from a list of positions (dimension N-1), and
+        the values along the final dimension
+        
+        Takes an array of positions with 1 dimension less than the dimensionality 
+        of the grid plus an array that will be added at that position along the final 
+        dimension.
+
+        Parameters
+        ----------
+        positions : array
+            The positions of each object should be an n_objects x (n_dimensions-1)
+            array
+        values : array
+            Values to grid, should be an n_objects x grid_size_in_final_dimension array.
+        ax : int (optional)
+            The axis along which the values are to be added, by default the final position
+            axis is assumed
+        new_prop : bool (optional)
+            If True, this method will create a new entry along the poperty
+            dimension of the grid rather than adding values on top of any existing values
+            in the grid. Default is False.
+        properties : int or list of ints (optional)
+            If specified, the values will only be added to the specified property
+            indices. If None, values will be added to all property indices.
+            Ignored if new_props = True
+        """
+
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
+        if np.any(self.fourier_space):
+            raise ValueError("Some axes are in fourier space, cannot add new properties in map space.")
+
+        # Check that the grid has the specified axis
+        if ax < 0: 
+            ax = self.n_dimensions+ax
+        if ax>=self.n_dimensions or ax<0:
+            raise ValueError('specified axes not valid')
+
+        # If the positions array is empty don't need to do much
+        if len(positions) == 0:
+            if positions.ndim == 1:
+                if new_prop:
+                    new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
+                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
+                    self.n_properties += 1
+            
+            return
+
+        # Otherwise make sure the positions and values arrays are in the right shapes and match the shape of the grid
+        positions = np.array(positions,ndmin=2)
+        values = np.array(values,ndmin=2)
+
+        if positions.shape[0] > 0:
+            if positions.shape[1] != self.n_dimensions-1:
+                raise ValueError('positions (dim={}) should have one fewer dimensions than the grid (dim={})'.format(positions.shape[1],self.n_dimensions))
+
+        if values.shape[0] != positions.shape[0]:
+            raise ValueError("values (len={}) and positions (len={}) should have the same first dimension length".format(len(values), len(positions)))
+
+        if values.shape[1] != self.n_pixels[ax]:
+            raise ValueError("The second dimension size of values (d={}) should match the size of grid dimension {} (d={})".format(values.shape[0],ax,self.n_pixels[ax]))
+
+        # Put data into coordinate units
+        cp = np.delete(self.center_point,ax).reshape(1, self.n_dimensions-1)
+        sl = np.delete(self.side_length,ax).reshape(1, self.n_dimensions-1)
+        px = np.delete(self.pixel_size,ax).reshape(1, self.n_dimensions-1)
+        nx = np.delete(self.n_pixels,ax)
+
+        positions = (positions - cp + sl/2) / px
+        positions = np.floor(positions).astype('int')
+
+        # Get rid of anything that doesn't fit
+        values = values[(~np.any(positions<0,axis=1)) & (~np.any(positions>=nx,axis=1))]
+        positions = positions[(~np.any(positions<0,axis=1)) & (~np.any(positions>=nx,axis=1))]
+
+        # Convert postions into tuples of coordinate lists:
+        positions = tuple(positions.T[i] for i in range(positions.shape[1]))
+
+        # Move array-axis to predictable location (end of grid)
+        if not new_prop:
+            if properties is None:
+                self.grid = np.moveaxis(self.grid,ax,-2)
+                np.add.at(self.grid, positions, np.expand_dims(values,2))
+                self.grid = np.moveaxis(self.grid,-2,ax)
+            else:
+                properties = self._check_property_input(properties)
+                for ip in properties:
+                    self.grid = np.moveaxis(self.grid,ax,-2)
+                    np.add.at(self.grid, positions+(slice(None),ip,), values)
+                    self.grid = np.moveaxis(self.grid,-2,ax)
+
+
+        else:
+            new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
+            new_grid = np.moveaxis(new_grid,ax,-2)
+            np.add.at(new_grid,positions,np.expand_dims(values,2))
+            new_grid = np.moveaxis(new_grid,-2,ax)
+            
+            self.grid = np.concatenate((self.grid,new_grid),axis=-1)
+            self.n_properties += 1
+
+        # Count the number of objects
+        self.n_objects += len(values)
+
+
+    def add_from_spec_func(self, positions: ArrayLike, spec_function: Callable, spec_function_arguments: ArrayLike = None, spec_ax: int = -1,
+                           is_cumulative: bool = False, eval_as_loop=False, 
+                           careful_with_memory: bool = True,
+                           new_prop: bool = False, properties: int = None):
+        """Add spectra to a grid
+        
+        Takes an array of positions with 1 dimension less than the dimensionality 
+        of the grid plus a function that is evaluated over the final dimension of
+        the grid. The function is evaulated at axis value along the final axis.
+
+        spec_function should take as its first argument an array of frequencies 
+        (values of the Grid instances axis matching the spec_ax parameter), and as its
+        second argument an array of shape n_objects x n_parameters containing any 
+        additional function arguments for the spec_function. The parameters for each
+        object are then passed as spec_function_arguments. By default, it is assumed
+        that the function will be evaluated simultaneously for all objects, and
+        return an array of shape (n_objects x spec_ax_length).
+        
+        Example spec_function:
+        >>> # Gaussian spectral line w/ 100 km/s sigma, assumes axis is in GHz
+        >>> # and line rest frequency is 115 GHz
+        >>> def spec_func(axis, params):
+        >>> ... lum = params[:,0]
+        >>> ... redshift = params[:,1]
+        >>> ... nu0 = 115/(1+redshift) # Redshift line center
+        >>> ... nu_sig = 300 / 3e5 * nu0 # FWHM in GHz
+        >>> ... # Reshape arrays so everything broadcasts together into the right shape:
+        >>> ... lum = lum.reshape(-1,1)
+        >>> ... nu_sig = nu_sig.reshape(-1,1)
+        >>> ... nu0 = nu0.reshape(-1,1)
+        >>> ... ax = axis.reshape(1,-1)
+        >>> ... spec = lum / np.sqrt(2*np.pi*nu_sig**2) * np.exp(-0.5 * (ax-nu0)**2/nu_sig**2)
+        >>> ... return spec
+        The corresponding spec_function_arguments would be
+        >>> spec_function_arguments = np.array([[lum1, redshift1],...,[lumn,redshiftn]])
+        
+        The optimal way to characterize a spectrum for this type of gridding is
+        in terms of its cumulative value along spectral axis, which can then be
+        evaluated at each bin edge and differenced to return an integrated 
+        spectrum that will not depend on the steps along the grid or (for example)
+        lose flux from narrow peaks that aren't well sampled by the Grid axis.
+        If spec_function is written as a cumulative function, then set ``is_cumulative``
+        to True, and the spectrum will be constructed by evaluating spec_function
+        at the edges of the axis cells and then differencing. This is not the default
+        as it is not common to write analytic formulae for the integral of a spectrum.
+
+        Parameters
+        ----------
+        positions : array
+            The positions of each object should be an n_objects x (n_dimensions-1)
+            array
+        spec_function : Callable
+            Function that will be evaluated to compute the spectra of each object
+        spec_function_args : array
+            Array of shape n_objects x n_function_parameters that will be passed 
+            to spec_function when evaluating spectra of each object
+        spec_ax : int (optional)
+            The axis along which the values are to be added, by default the final position
+            axis is assumed
+        eval_as_loop : bool (default = False)
+            If True, the spec_function will be evaluated in a loop - one call per 
+            object in the positions and spec_function_args arrays.
+        is_cumulative : bool (default = False)
+            If True, the spec_function returns the integral of the spectrum from 0 to
+            a given point along the axis, and the final spectrum is calculated by 
+            differencing evaluated values at the edge of each bin in the Grid.
+        careful_with_memory : bool (default = True)
+            If True, the input arrays of positions and spec_function_args will be 
+            broken up into smaller chunks and added to the grid one chunk at a time.
+            This is helpful for preventing memory overflows when processing large
+            catalogs. The chunk size is determined so that the number of array 
+            elements used to hold spectra is never larger than the number of array
+            elements in the grid itself.
+        new_prop : bool (optional)
+            If True, this method will create a new entry along the poperty
+            dimension of the grid rather than adding values on top of any existing values
+            in the grid. Default is False.
+        properties : int or list of ints (optional)
+            If specified, the values will only be added to the specified property
+            indices. If None, values will be added to all property indices.
+            Ignored if new_props = True
+        """
+
+        if not hasattr(spec_function, '__call__'):
+            raise ValueError("spec_function must have a __call__ method")
+
+        if not self.grid_active:
+            raise ValueError("data array for this Grid has not been initialized")
+        
+        if np.any(self.fourier_space):
+            raise ValueError("Some axes are in fourier space, cannot add new properties in map space.")
+
+        # Check that the grid has the specified spec_axis
+        if spec_ax < 0: 
+            spec_ax = self.n_dimensions-spec_ax
+        if spec_ax>=self.n_dimensions or spec_ax<0:
+            raise ValueError('specified spec_ax not valid')
+
+        # If the positions array is empty don't need to do much
+        if len(positions) == 0:
+            if positions.ndim == 1:
+                if new_prop:
+                    new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
+                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
+                    self.n_properties += 1
+            
+            return
+
+        # Otherwise make sure the positions and spec_function_arguments arrays are in the right shapes and match the shape of the grid
+        positions = np.array(positions,ndmin=2)
+        if positions.shape[0] > 0:
+            if positions.shape[1] != self.n_dimensions-1:
+                raise ValueError('positions (dim={}) should have one fewer dimensions than the grid (dim={})'.format(positions.shape[1],self.n_dimensions))
+
+        if spec_function_arguments is None:
+            spec_function_arguments = np.zeros((len(positions),0))
+        else:
+            spec_function_arguments = np.array(spec_function_arguments,ndmin=1)
+        if spec_function_arguments.shape[0] != positions.shape[0]:
+            raise ValueError('spec_function_arguments must have the same length as positions')
+
+        # Determine if a loop is necessary
+        if careful_with_memory:
+            chunk_size = np.prod(np.delete(self.n_pixels,spec_ax)) # maximum number of spectral channels computed equals size of the grid
+        else:
+            chunk_size = len(positions)
+
+        # Pick axis to use
+        if is_cumulative:
+            spec_axis_eval = self.axes[spec_ax]
+        else:
+            spec_axis_eval = self.axes_centers[spec_ax]
+
+        # Loop is here to allow a version which minimizes memory usage.
+        # default parameters will cause the loop to only happen once and
+        # simultaneously evaluate all spectra
+        for i in range(np.ceil(len(positions)/chunk_size).astype(int)) :
+            
+            pi = positions[i*chunk_size:(i+1)*chunk_size]
+            argi = spec_function_arguments[i*chunk_size:(i+1)*chunk_size]
+
+
+            if eval_as_loop:
+                values = []
+                for ig in range(len(pi)):
+                    values.append(spec_function(spec_axis_eval, argi[ig]))
+            else:
+                values = spec_function(spec_axis_eval, argi)
+            
+            values = np.array(values,ndmin=2)
+
+            if is_cumulative:
+                values = np.diff(values, axis=1)
+
+            if values.shape[1] != self.n_pixels[spec_ax]:
+                raise ValueError("The length of the returned spectrum (d={}) should match the size of grid dimension {}".format(values.shape[0],spec_ax))
+            if values.shape[0] != len(pi):
+                raise ValueError("The number of returned spectra should match the number of positions")
+        
+            self.add_from_pos_plus_array(pi, values, new_prop=new_prop, properties=properties, ax=spec_ax)
+            if new_prop: # After first loop need to change behavior
+                new_prop = False
+                properties = -1
 
 
     def sum_properties(self,properties=None,in_place=True):
@@ -2113,258 +2390,3 @@ class GridFromAxesAndFunction(GridFromAxes):
         if self.grid.shape != shape:
             raise ValueError("function does not produce a grid of the correct shape")
 
-
-
-
-
-
-### DEVELOPMENTAL
-        
-class SpecGrid(Grid):
-
-    def add_from_pos_plus_array(self, positions: np.ndarray, values: np.ndarray, new_prop: bool = False, ax=-1):
-        """Add values to a grid from a list of positions (dimension N-1), and
-        the values along the final dimension
-        
-        Takes an array of positions with 1 dimension less than the dimensionality 
-        of the grid plus an array that will be added at that position along the final 
-        dimension.
-
-        Parameters
-        ----------
-        positions : array
-            The positions of each object should be an n_objects x (n_dimensions-1)
-            array
-        values : array
-            Values to grid, should be an n_objects x grid_size_in_final_dimension array.
-        new_props : bool (optional)
-            If True, this method will create a new entry along the poperty
-            dimension of the grid rather than adding values on top of any existing values
-            in the grid. Default is False.
-        ax : int (optional)
-            The axis along which the values are to be added, by default the final position
-            axis is assumed
-        """
-
-        if not self.grid_active:
-            raise ValueError("data array for this Grid has not been initialized")
-        
-        if np.any(self.fourier_space):
-            raise ValueError("Some axes are in fourier space, cannot add new properties in map space.")
-
-        # Check that the grid has the specified axis
-        if ax < 0: 
-            ax = self.n_dimensions-ax
-        if ax>=self.n_dimensions or ax<0:
-            raise ValueError('specified axes not valid')
-
-        # If the positions array is empty don't need to do much
-        if len(positions) == 0:
-            if positions.ndim == 1:
-                if new_prop:
-                    new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
-                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-                    self.n_properties += 1
-            
-            return
-
-        # Otherwise make sure the positions and values arrays are in the right shapes and match the shape of the grid
-        positions = np.array(positions,ndmin=2)
-        values = np.array(values,ndmin=2)
-
-        if positions.shape[0] > 0:
-            if positions.shape[1] != self.n_dimensions-1:
-                raise ValueError('positions (dim={}) should have one fewer dimensions than the grid (dim={})'.format(positions.shape[1],self.n_dimensions))
-
-        if values.shape[0] != positions.shape[0]:
-            raise ValueError("values (len={}) and positions (len={}) should have the same first dimension length".format(len(values), len(positions)))
-
-        if values.shape[1] != self.n_pixels[ax]:
-            raise ValueError("The second dimension size of values (d={}) should match the size of grid dimension {} (d={})".format(values.shape[0],ax,self.n_pixels[ax]))
-
-        # Put data into coordinate units
-        cp = np.delete(self.center_point,ax).reshape(1, self.n_dimensions-1)
-        sl = np.delete(self.side_length,ax).reshape(1, self.n_dimensions-1)
-        px = np.delete(self.pixel_size,ax).reshape(1, self.n_dimensions-1)
-        np = np.delete(self.n_pixels,ax)
-
-        positions = (positions - cp + sl/2) / px
-        positions = np.floor(positions).astype('int')
-
-        # Get rid of anything that doesn't fit
-        values = values[(~np.any(positions<0,axis=1)) & (~np.any(positions>=np,axis=1))]
-        positions = positions[(~np.any(positions<0,axis=1)) & (~np.any(positions>=np,axis=1))]
-
-        # Convert postions into tuples of coordinate lists:
-        positions = tuple(positions.T[i] for i in range(positions.shape[1]))
-
-        # Move array-axis to predictable location (end of grid)
-        if not new_prop:
-            self.grid = np.moveaxis(self.grid,ax,-2)
-            np.add.at(self.grid, positions, np.expand_dims(values,2))
-            self.grid = np.moveaxis(self.grid,-2,ax)
-        else:
-            new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
-            new_grid = np.moveaxis(new_grid,ax,-2)
-            np.add.at(new_grid,positions,np.expand_dims(values,2))
-            new_grid = np.moveaxis(new_grid,-2,ax)
-            
-            self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-            self.n_properties += 1
-
-        # Count the number of objects
-        self.n_objects += len(values)
-
-
-
-    def add_from_spec_func(self, positions: np.ndarray, spec_function: Callable, spec_function_arguments: np.ndarray = None, spec_ax: int = -1,
-                           is_cumulative: bool = False, eval_as_loop=False, 
-                           careful_with_memory=True):
-        """Add spectra to a grid
-        
-        Takes an array of positions with 1 dimension less than the dimensionality 
-        of the grid plus a function that is evaluated over the final dimension of
-        the grid. The function is evaulated at axis value along the final axis.
-
-        spec_function should take as its first argument an array of frequencies 
-        (values of the Grid instances axis matching the spec_ax parameter), and as its
-        second argument an array of shape n_objects x n_parameters containing any 
-        additional function arguments for the spec_function. The parameters for each
-        object are then passed as spec_function_arguments. By default, it is assumed
-        that the function will be evaluated simultaneously for all objects, and
-        return an array of shape (n_objects x spec_ax_length).
-        
-        Example spec_function:
-        >>> # Gaussian spectral line w/ 100 km/s sigma, assumes axis is in GHz
-        >>> # and line rest frequency is 115 GHz
-        >>> def spec_func(axis, params):
-        >>> ... lum = params[:,0]
-        >>> ... redshift = params[:,1]
-        >>> ... nu0 = 115/(1+redshift) # Redshift line center
-        >>> ... nu_sig = 300 / 3e5 * nu0 # FWHM in GHz
-        >>> ... # Reshape arrays so everything broadcasts together into the right shape:
-        >>> ... lum = lum.reshape(-1,1)
-        >>> ... nu_sig = nu_sig.reshape(-1,1)
-        >>> ... nu0 = nu0.reshape(-1,1)
-        >>> ... ax = axis.reshape(1,-1)
-        >>> ... spec = lum / np.sqrt(2*np.pi*nu_sig**2) * np.exp(-0.5 * (ax-nu0)**2/nu_sig**2)
-        >>> ... return spec
-        The corresponding spec_function_arguments would be
-        >>> spec_function_arguments = np.array([[lum1, redshift1],...,[lumn,redshiftn]])
-        
-        The optimal way to characterize a spectrum for this type of gridding is
-        in terms of its cumulative value along spectral axis, which can then be
-        evaluated at each bin edge and differenced to return an integrated 
-        spectrum that will not depend on the steps along the grid or (for example)
-        lose flux from narrow peaks that aren't well sampled by the Grid axis.
-        If spec_function is written as a cumulative function, then set ``is_cumulative``
-        to True, and the spectrum will be constructed by evaluating spec_function
-        at the edges of the axis cells and then differencing. This is not the default
-        as it is not common to write analytic formulae for the integral of a spectrum.
-
-        Parameters
-        ----------
-        positions : array
-            The positions of each object should be an n_objects x (n_dimensions-1)
-            array
-        spec_function : Callable
-            Function that will be evaluated to compute the spectra of each object
-        spec_function_args : array
-            Array of shape n_objects x n_function_parameters that will be passed 
-            to spec_function when evaluating spectra of each object
-        spec_ax : int (optional)
-            The axis along which the values are to be added, by default the final position
-            axis is assumed
-        eval_as_loop : bool (default = False)
-            If True, the spec_function will be evaluated in a loop - one call per 
-            object in the positions and spec_function_args arrays.
-        is_cumulative : bool (default = False)
-            If True, the spec_function returns the integral of the spectrum from 0 to
-            a given point along the axis, and the final spectrum is calculated by 
-            differencing evaluated values at the edge of each bin in the Grid.
-        careful_with_memory : bool (default = True)
-            If True, the input arrays of positions and spec_function_args will be 
-            broken up into smaller chunks and added to the grid one chunk at a time.
-            This is helpful for preventing memory overflows when processing large
-            catalogs. The chunk size is determined so that the number of array 
-            elements used to hold spectra is never larger than the number of array
-            elements in the grid itself.
-        """
-
-        if not hasattr(spec_function, '__call__'):
-            raise ValueError("spec_function must have a __call__ method")
-
-        if not self.grid_active:
-            raise ValueError("data array for this Grid has not been initialized")
-        
-        if np.any(self.fourier_space):
-            raise ValueError("Some axes are in fourier space, cannot add new properties in map space.")
-
-        # Check that the grid has the specified spec_axis
-        if spec_ax < 0: 
-            spec_ax = self.n_dimensions-spec_ax
-        if spec_ax>=self.n_dimensions or spec_ax<0:
-            raise ValueError('specified spec_ax not valid')
-
-        # # If the positions array is empty don't need to do much
-        # if len(positions) == 0:
-        #     if positions.ndim == 1:
-        #         if new_prop:
-        #             new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
-        #             self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-        #             self.n_properties += 1
-            
-        #     return
-
-        # Otherwise make sure the positions and spec_function_arguments arrays are in the right shapes and match the shape of the grid
-        positions = np.array(positions,ndmin=2)
-        if positions.shape[0] > 0:
-            if positions.shape[1] != self.n_dimensions-1:
-                raise ValueError('positions (dim={}) should have one fewer dimensions than the grid (dim={})'.format(positions.shape[1],self.n_dimensions))
-
-        if spec_function_arguments is None:
-            spec_function_arguments = np.zeros((len(positions),0))
-        else:
-            spec_function_arguments = np.array(spec_function_arguments,ndmin=1)
-        if spec_function_arguments.shape[0] != positions.shape[0]:
-            raise ValueError('spec_function_arguments must have the same length as positions')
-
-        # Determine if a loop is necessary
-        if careful_with_memory:
-            chunk_size = np.prod(np.delete(self.n_pixels,spec_ax)) # maximum number of spectral channels computed equals size of the grid
-        else:
-            chunk_size = len(positions)
-
-        # Pick axis to use
-        if is_cumulative:
-            spec_axis_eval = self.axes[spec_ax]
-        else:
-            spec_axis_eval = self.axes_centers[spec_ax]
-
-        # Loop is here to allow a version which minimizes memory usage.
-        # default parameters will cause the loop to only happen once and
-        # simultaneously evaluate all spectra
-        for i in range(np.ceil(len(positions)/chunk_size).astype(int)) :
-            
-            pi = positions[i*chunk_size:(i+1)*chunk_size]
-            argi = spec_function_arguments[i*chunk_size:(i+1)*chunk_size]
-
-
-            if eval_as_loop:
-                values = []
-                for ig in range(len(pi)):
-                    values.append(spec_function(spec_axis_eval, argi[ig]))
-            else:
-                values = spec_function(spec_axis_eval, argi)
-            
-            values = np.array(values,ndmin=2)
-
-            if is_cumulative:
-                values = np.diff(values, axis=1)
-
-            if values.shape[1] != self.n_pixels[spec_ax]:
-                raise ValueError("The length of the returned spectrum (d={}) should match the size of grid dimension {}".format(values.shape[0],ax))
-            if values.shape[0] != len(pi):
-                raise ValueError("The number of returned spectra should match the number of positions")
-        
-            self.add_from_pos_plus_array(pi, values, new_prop=False, ax=spec_ax)
