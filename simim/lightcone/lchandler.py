@@ -24,7 +24,7 @@ class LCHandler(Handler):
     to do so).
     """
 
-    def __init__(self,sim,name,number):
+    def __init__(self,sim,name,number,in_h_units=False):
         """Initialize Handler for a specified lightcone
 
         This class a generic interface for interacting with data in SimIM's
@@ -45,7 +45,11 @@ class LCHandler(Handler):
         name : str
             The name of the lightcone set. 
         number : int
-            The numeric index of the lightcone within the set        
+            The numeric index of the lightcone within the set
+        in_h_units : bool
+            If True, values will be returned, plotted, etc. in units including little h.
+            If False, little h dependence will be removed. This can be overridden in 
+            most method calls.
         """
 
         # Handle file path stuff
@@ -62,7 +66,7 @@ class LCHandler(Handler):
             raise ValueError("Lightcone number '{}' not found.".format(number))
         path = os.path.join(path,'lc_{:04d}.hdf5'.format(number))
 
-        super().__init__(path=path,objectname='Lightcone',groupname='Lightcone Full')
+        super().__init__(path=path,objectname='Lightcone',groupname='Lightcone Full',in_h_units=in_h_units)
 
         # Get the metadata
         self.metadata = {}
@@ -88,7 +92,7 @@ class LCHandler(Handler):
         self.extra_props['maximum redshift'] = self.maximum_redshift
 
 
-    def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=False):
+    def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=None):
         """Compute the comoving volume of the light cone
 
         Parameters
@@ -104,16 +108,19 @@ class LCHandler(Handler):
             by default matches the lightcone
         shape : 'box', 'circle', optional
             The shape of the box - by default matches the lightcone
-        in_h_units : bool (default is False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be returned in units including little h.
-            If False, little h dependence will be removed.
-
+            If False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         volume : float
             The volume of the lightcone in comoving Mpc^3
         """
+
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
 
         # Set defaults
         if redshift_min == None:
@@ -162,10 +169,13 @@ class LCHandler(Handler):
 
         return volume
 
-    def eval_stat_evo(self, redshift_bins, stat_function, kwargs, kw_remap={}, other_kws={}, zmin_kw=False, zmax_kw=False, volume_kw=False, give_args_in_h_units=False):
+    def eval_stat_evo(self, redshift_bins, stat_function, kwargs, kw_remap={}, other_kws={}, zmin_kw=False, zmax_kw=False, volume_kw=False, give_args_in_h_units=None):
         """Compute the evolution of a statistic over a specified set of
         redshift bins
         """
+
+        if give_args_in_h_units is None:
+            give_args_in_h_units = self.default_in_h_units
 
         redshift_bins = np.sort(redshift_bins)
         
@@ -204,7 +214,7 @@ class LCHandler(Handler):
 
     def grid(self, *property_names, 
              restfreq=None,
-             in_h_units=False,use_all_inds=False,
+             in_h_units=None,use_all_inds=False,
              res=None,ralim=None,declim=None,zlim=None,
              norm=None):
         """Place selected properties into a 3d grid
@@ -224,10 +234,10 @@ class LCHandler(Handler):
             A rest frequency to use for converting the third axis from redshift
             to frequency. The returned axis will be constructed as
             restfreq/(1+z)
-        in_h_units : bool, default=False
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, positions and property values fed to the gridder will be in
             units including little h. If False, little h dependence will be
-            removed.
+            removed. Defaults to whatever is set globally for the Handler instance.
         use_all_inds : bool, default=False
             If True function all halos will be gridded, otherwise only active
             halos will be included.
@@ -250,6 +260,9 @@ class LCHandler(Handler):
             The gridded properties
         """
 
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+        
         x = self.return_property('ra',in_h_units=in_h_units,use_all_inds=use_all_inds)
         y = self.return_property('dec',in_h_units=in_h_units,use_all_inds=use_all_inds)
         z = self.return_property('redshift',in_h_units=in_h_units,use_all_inds=use_all_inds)
@@ -293,7 +306,7 @@ class LCHandler(Handler):
 
 
     @pltdeco
-    def animate(self, save=None, use_all_inds=False, colorpropname='mass',colorscale='log', sizepropname='mass',sizescale='log',in_h_units=False):
+    def animate(self, save=None, use_all_inds=False, colorpropname='mass',colorscale='log', sizepropname='mass',sizescale='log',in_h_units=None):
         """Make an animation of the light cone
 
         Parameters
@@ -309,15 +322,19 @@ class LCHandler(Handler):
             galaxy, default is 'mass'
         colorpropscale : 'log' or 'linear'
             Determines how the colorbar will be applied. Default is 'log'
-        in_h_units : bool (default is False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be plotted in units including little h.
-            If False, little h dependence will be removed.
+            If False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         None
         """
 
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+            
         x = self.return_property('pos_x',use_all_inds=use_all_inds,in_h_units=in_h_units)
         y = self.return_property('pos_y',use_all_inds=use_all_inds,in_h_units=in_h_units)
         z = self.return_property('pos_z',use_all_inds=use_all_inds,in_h_units=in_h_units)
