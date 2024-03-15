@@ -40,39 +40,6 @@ k = 1.3806e-23
 ########################## SECTION 0: Helper Routines ##########################
 ################################################################################
 
-'''error class for function input errors
-'''
-
-class InputError(Exception):
-    def __init__(self,expression,message):
-        Exception.__init__ (self,'bad input in '+expression+' - '+message)
-
-
-
-'''quick way to rebin data into larger pixels
-'''
-def rebin(a, size=4):
-    dims = array(a.shape)
-    dims[0] = int(dims[0]/size)
-    new_a_1 = zeros(dims)
-    for i in range(dims[0]):
-        if i != dims[0]-1:
-            new_a_1[i] = sum(a[size*i:size*(i+1),:],axis=0)
-        else:
-            new_a_1[i] = sum(a[size*i:,:],axis=0)
-
-    dims[1] = int(dims[1]/size)
-    new_a_2 = zeros(dims)
-    for j in range(dims[1]):
-        if j != dims[1]-1:
-            new_a_2[:,j] = sum(new_a_1[:,size*j:size*(j+1)],axis=1)
-        else:
-            new_a_2[:,j] = sum(new_a_1[:,size*j:],axis=1)
-
-    return new_a_2
-
-
-
 '''KGRID:
 Object to contain kgrids and suplemental information
 '''

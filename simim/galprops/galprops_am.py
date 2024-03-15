@@ -2,53 +2,64 @@ import numpy as np
 from scipy.stats import rv_continuous
 from scipy.special import gamma, gammaincc, expi
 
-def am_dfcat(prop1_cat, prop2_rv:rv_continuous, prop2_min=0, prop2_max=np.inf, missing_pmass_low_p1=0, missing_pmass_high_p1=0, missing_pmass_low_p2=0, missing_pmass_high_p2=0,
-             extrapolate_low_p1='nan',extrapolate_high_p1='nan',extrapolate_low_p2='nan',extrapolate_high_p2='nan',
-             reverseorder=False):
-    """Abundance match prop1 and prop2 and return functions that for determining
+def am_dfcat(prop1_cat: np.ndarray, prop2_rv: rv_continuous, 
+             prop2_min: float = 0, prop2_max: float = np.inf, 
+             missing_pmass_low_p1: float = 0, missing_pmass_high_p1: float = 0, 
+             missing_pmass_low_p2: float = 0, missing_pmass_high_p2: float = 0,
+             extrapolate_low_p1: float = 'nan',extrapolate_high_p1: float = 'nan',
+             extrapolate_low_p2: float = 'nan',extrapolate_high_p2: float = 'nan',
+             reverseorder: bool = False):
+    """Abundance match prop1 and prop2 and return functions for determining
     the value of one property when the other is specified
 
-    This code takes a catalog for property 1 and a distribution function for 
-    property 2 and abundance matches them to determine the relation between 
-    the two properties.
+    This code takes a catalog for property 1 and a distribution function for
+    property 2 and abundance matches them to determine the relation between the
+    two properties.
+
+    Note: not all possible parameter combinations for this function have been
+    tested, use with care and implement a few sanity checks.
 
     Arguments
     ---------
     prop1_cat : 1d array-like
         A set of values of property 1
     prop2_rv : scipy.stats.rv_continuous instance
-        A scipy.stats.rv_continuous object describing the probability distribution
-        of property 2
+        A scipy.stats.rv_continuous object describing the probability
+        distribution of property 2
     prop2_min, prop2_max : float
-        The minimum and maximum values for which to evaluate the property 2 CDF 
-        function, outside this range the extrapolation parameters are used. Defaults 
-        to 0 and infinity. The probability mass falling outside these limits can 
-        be specified by missing_pmass_low_p2 and missing_pmass_high_p2.
+        The minimum and maximum values for which to evaluate the property 2 CDF
+        function, outside this range the extrapolation parameters are used.
+        Defaults to 0 and infinity. The probability mass falling outside these
+        limits can be specified by missing_pmass_low_p2 and
+        missing_pmass_high_p2.
     missing_pmass_low_p1 : float between 0 and 1
-        The fraction of the total probability mass that is missing bellow the lower
-        limit of prop1_cat; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing bellow the
+        lower limit of prop1_cat; should be between 0 and 1. Defaults to 0
     missing_pmass_high_p1 : float between 0 and 1
-        The fraction of the total probability mass that is missing above the upper
-        limit of prop1_cat; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing above the
+        upper limit of prop1_cat; should be between 0 and 1. Defaults to 0
     missing_pmass_low_p2 : float between 0 and 1
-        The fraction of the total probability mass that is missing bellow the lower
-        limit where prop2_rv.cdf=0; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing bellow the
+        lower limit where prop2_rv.cdf=0; should be between 0 and 1. Defaults to
+        0
     missing_pmass_high_p2 : float between 0 and 1
-        The fraction of the total probability mass that is missing above the upper
-        limit where prop2_rv.cdf=1, should be between 0 and 1. Defaults to 0
-    extrapolate_low_p1 : float, 'flat', 'nan'
-        Option for how to extrapolate 
-        
-        ........if one of the lists is longer than
-        the other. If flat, the minimum value of the shorter list will be
-        assigned to all unmatched values in the longest list. If 'nan'
-        all unmatched values will be assigned np.nan as a value of the other
-        property. If any other value, unmatched values will be assigned this
-        value
+        The fraction of the total probability mass that is missing above the
+        upper limit where prop2_rv.cdf=1, should be between 0 and 1. Defaults to
+        0
+    extrapolate_low_p1, extrapolate_low_p2 : float, 'flat', 'nan'
+        Option for how to extrapolate to lower values. If flat, minimum values
+        will be used. If 'nan' all unmatched values will be assigned np.nan as a
+        value of the other property. If any other value, unmatched values will
+        be assigned this value
+    extrapolate_high_p1, extrapolate_high_p2 : float, 'flat', 'nan'
+        Option for how to extrapolate to higher values. If flat, maximum values
+        will be used. If 'nan' all unmatched values will be assigned np.nan as a
+        value of the other property. If any other value, unmatched values will
+        be assigned this value
     reverseorder : bool, optional
         The order in which to perform the matching. By default high values will
-        be matched to high values and low values to low values. Setting 
-        reverseorder to True will result in high values of one property being 
+        be matched to high values and low values to low values. Setting
+        reverseorder to True will result in high values of one property being
         associated to low values of the other and vice versa 
 
     Returns
@@ -126,32 +137,25 @@ def am_dfcat(prop1_cat, prop2_rv:rv_continuous, prop2_min=0, prop2_max=np.inf, m
         def p2ofp1(p1):
             return ppf_func_p2(cdf_func_p1(p1))
 
-    # pcs = np.array([.25,.5,.75])
-    # print('ppf_func_p1:', ppf_func_p1(pcs))
-    # print('cdf_func_p2:', cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])))
-    # print('ppf_func_p1(cdf_func_p2):', ppf_func_p1(cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908]))))
-    # print('p1ofp2:',p1ofp2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])))
-
-    # print()
-
-    # print('ppf_func_p2:', ppf_func_p2(pcs))
-    # print('cdf_func_p1:', cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])))
-    # print('ppf_func_p2(cdf_func_p1):', ppf_func_p2(cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10]))))
-    # print('p2ofp1:',p2ofp1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])))
-
     return p2ofp1, p1ofp2
 
 
 def am_dfdf(prop1_rv:rv_continuous, prop2_rv:rv_continuous, 
-            prop1_min=0, prop1_max=np.inf, prop2_min=0, prop2_max=np.inf, 
-            missing_pmass_low_p1=0, missing_pmass_high_p1=0, missing_pmass_low_p2=0, missing_pmass_high_p2=0,
-            extrapolate_low_p1='nan',extrapolate_high_p1='nan',extrapolate_low_p2='nan',extrapolate_high_p2='nan',
-            reverseorder=False):
+            prop1_min: float = 0, prop1_max: float = np.inf, 
+            prop2_min: float = 0, prop2_max: float = np.inf, 
+            missing_pmass_low_p1: float = 0, missing_pmass_high_p1: float = 0, 
+            missing_pmass_low_p2: float = 0, missing_pmass_high_p2: float = 0,
+            extrapolate_low_p1: float = 'nan', extrapolate_high_p1: float = 'nan',
+            extrapolate_low_p2: float = 'nan', extrapolate_high_p2: float = 'nan',
+            reverseorder: bool = False):
     """Abundance match prop1 and prop2 and return functions that for determining
     the value of one property when the other is specified
 
     This code takes distribution functions for two properties, and directly
     abundance matches them to determine the relation between the two properties.
+
+    Note: not all possible parameter combinations for this function have been
+    tested, use with care and implement a few sanity checks.
 
     Arguments
     ---------
@@ -161,36 +165,39 @@ def am_dfdf(prop1_rv:rv_continuous, prop2_rv:rv_continuous,
     prop2_rv : scipy.stats.rv_continuous instance
         A scipy.stats.rv_continuous object describing the probability distribution
         of property 2
-    prop2_min, prop2_max, prop2_min, prop2_max : float
+    prop1_min, prop1_max, prop2_min, prop2_max : float
         The minimum and maximum values for which to evaluate the CDF 
         functions, outside this range the extrapolation parameters are used. Defaults 
         to 0 and infinity. The probability mass falling outside these limits can 
         be specified by missing_pmass_low_p2 and missing_pmass_high_p2.
     missing_pmass_low_p1 : float between 0 and 1
-        The fraction of the total probability mass that is missing bellow the lower
-        limit of prop1_cat; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing bellow the
+        lower limit of prop1_cat; should be between 0 and 1. Defaults to 0
     missing_pmass_high_p1 : float between 0 and 1
-        The fraction of the total probability mass that is missing above the upper
-        limit of prop1_cat; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing above the
+        upper limit of prop1_cat; should be between 0 and 1. Defaults to 0
     missing_pmass_low_p2 : float between 0 and 1
-        The fraction of the total probability mass that is missing bellow the lower
-        limit where prop2_rv.cdf=0; should be between 0 and 1. Defaults to 0
+        The fraction of the total probability mass that is missing bellow the
+        lower limit where prop2_rv.cdf=0; should be between 0 and 1. Defaults to
+        0
     missing_pmass_high_p2 : float between 0 and 1
-        The fraction of the total probability mass that is missing above the upper
-        limit where prop2_rv.cdf=1, should be between 0 and 1. Defaults to 0
-    extrapolate_low_p1 : float, 'flat', 'nan'
-        Option for how to extrapolate 
-        
-        ........if one of the lists is longer than
-        the other. If flat, the minimum value of the shorter list will be
-        assigned to all unmatched values in the longest list. If 'nan'
-        all unmatched values will be assigned np.nan as a value of the other
-        property. If any other value, unmatched values will be assigned this
-        value
+        The fraction of the total probability mass that is missing above the
+        upper limit where prop2_rv.cdf=1, should be between 0 and 1. Defaults to
+        0
+    extrapolate_low_p1, extrapolate_low_p2 : float, 'flat', 'nan'
+        Option for how to extrapolate to lower values. If flat, minimum values
+        will be used. If 'nan' all unmatched values will be assigned np.nan as a
+        value of the other property. If any other value, unmatched values will
+        be assigned this value
+    extrapolate_high_p1, extrapolate_high_p2 : float, 'flat', 'nan'
+        Option for how to extrapolate to higher values. If flat, maximum values
+        will be used. If 'nan' all unmatched values will be assigned np.nan as a
+        value of the other property. If any other value, unmatched values will
+        be assigned this value
     reverseorder : bool, optional
         The order in which to perform the matching. By default high values will
-        be matched to high values and low values to low values. Setting 
-        reverseorder to True will result in high values of one property being 
+        be matched to high values and low values to low values. Setting
+        reverseorder to True will result in high values of one property being
         associated to low values of the other and vice versa 
 
     Returns
@@ -579,6 +586,7 @@ class double_schechter_gen(rv_continuous):
 
 class modified_schechter_gen(rv_continuous):
     """Scipy distribution generator for a modified schechter function"""
+
     def lum_function(self, x, phi0, x0, alpha, sigma, xmin):
         '''Returns modified schechter function.
         suitable for integration in d log L space'''
@@ -657,6 +665,7 @@ class modified_schechter_gen(rv_continuous):
 
 class double_power_law_gen(rv_continuous):
     """Scipy distribution generator for a double power law lf function"""
+    
     def lum_function(self, x, phi0, x0, alpha, beta, xmin):
         '''Returns double power law function.'''
         phi = phi0 * ((x/x0)**(alpha) + (x/x0)**beta)**-1
