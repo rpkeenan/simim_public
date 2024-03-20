@@ -552,6 +552,34 @@ class Grid():
         savefunc(path,**save_data)
 
 
+    def add_new_prop(self,value=None):
+        """Add a new property to the grid"""
+
+        if self.grid_active:
+            if value is None:
+                value = np.zeros(np.concatenate((self.n_pixels,[1])))
+            elif value.ndim == self.grid.ndim:
+                if np.any(value.shape[:-1] != self.n_pixels):
+                    raise ValueError("Value array must match shape of grid")
+            elif value.ndim == self.n_dimensions:
+                if np.any(value.shape != self.n_pixels):
+                    raise ValueError("Value array must match shape of grid")
+                value = value[...,np.newaxis]
+            else:
+                raise ValueError("Value array must match shape of grid")
+
+            self.grid = np.concatenate((self.grid,value),axis=-1)
+            self.n_properties += value.shape[-1]
+
+        # Different behavior if grid isn't activated yet
+        if not self.grid_active:
+            if value is not None:
+                raise ValueError("data array for this Grid has not been initialized, cannot add new values in property array -- use add_new_prop(value=None) to add an empty new property without initializing grid")
+            else:
+                self.n_properties += 1
+
+
+
     def add_from_cat(self,positions,values=None,new_props=False,properties=None):
         """Add values to the grid
 
@@ -589,8 +617,7 @@ class Grid():
                 if new_props:
                     new_n_properties = values.shape[1]
                     new_grid = np.zeros(np.concatenate((self.n_pixels,[new_n_properties])))
-                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-                    self.n_properties = self.n_properties + new_n_properties
+                    self.add_new_prop(new_grid)
 
         # Otherwise make sure the positions array is in the right shape and matches the shape of the grid
         else:
@@ -623,8 +650,7 @@ class Grid():
                 new_n_properties = values.shape[1]
                 new_grid = np.zeros(np.concatenate((self.n_pixels,[new_n_properties])))
                 np.add.at(new_grid,positions,values)
-                self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-                self.n_properties = self.n_properties + new_n_properties
+                self.add_new_prop(new_grid)
 
             else:
                 properties = self._check_property_input(properties)
@@ -687,8 +713,7 @@ class Grid():
             if positions.ndim == 1:
                 if new_prop:
                     new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
-                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-                    self.n_properties += 1
+                    self.add_new_prop(new_grid)
             
             return
 
@@ -742,8 +767,7 @@ class Grid():
             np.add.at(new_grid,positions,np.expand_dims(values,2))
             new_grid = np.moveaxis(new_grid,-2,ax)
             
-            self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-            self.n_properties += 1
+            self.add_new_prop(new_grid)
 
         # Count the number of objects
         self.n_objects += len(values)
@@ -843,7 +867,7 @@ class Grid():
 
         # Check that the grid has the specified spec_axis
         if spec_ax < 0: 
-            spec_ax = self.n_dimensions-spec_ax
+            spec_ax = self.n_dimensions+spec_ax
         if spec_ax>=self.n_dimensions or spec_ax<0:
             raise ValueError('specified spec_ax not valid')
 
@@ -852,8 +876,7 @@ class Grid():
             if positions.ndim == 1:
                 if new_prop:
                     new_grid = np.zeros(np.concatenate((self.n_pixels,[1])))
-                    self.grid = np.concatenate((self.grid,new_grid),axis=-1)
-                    self.n_properties += 1
+                    self.new_prop(new_grid)
             
             return
 
@@ -867,8 +890,11 @@ class Grid():
             spec_function_arguments = np.zeros((len(positions),0))
         else:
             spec_function_arguments = np.array(spec_function_arguments,ndmin=1)
+        
         if spec_function_arguments.shape[0] != positions.shape[0]:
             raise ValueError('spec_function_arguments must have the same length as positions')
+        if spec_function_arguments.ndim == 1:
+            spec_function_arguments = spec_function_arguments[...,np.newaxis]
 
         # Determine if a loop is necessary
         if careful_with_memory:
@@ -885,7 +911,7 @@ class Grid():
         # Loop is here to allow a version which minimizes memory usage.
         # default parameters will cause the loop to only happen once and
         # simultaneously evaluate all spectra
-        for i in range(np.ceil(len(positions)/chunk_size).astype(int)) :
+        for i in range(np.ceil(len(positions)/chunk_size).astype(int)):
             
             pi = positions[i*chunk_size:(i+1)*chunk_size]
             argi = spec_function_arguments[i*chunk_size:(i+1)*chunk_size]
@@ -894,7 +920,7 @@ class Grid():
             if eval_as_loop:
                 values = []
                 for ig in range(len(pi)):
-                    values.append(spec_function(spec_axis_eval, argi[ig]))
+                    values.append(spec_function(spec_axis_eval, argi[ig].reshape(1,-1)).flatten())
             else:
                 values = spec_function(spec_axis_eval, argi)
             
@@ -904,14 +930,14 @@ class Grid():
                 values = np.diff(values, axis=1)
 
             if values.shape[1] != self.n_pixels[spec_ax]:
-                raise ValueError("The length of the returned spectrum (d={}) should match the size of grid dimension {}".format(values.shape[0],spec_ax))
+                raise ValueError("The length of the returned spectrum (l={}) should match the size of grid dimension {}".format(values.shape[1],spec_ax))
             if values.shape[0] != len(pi):
                 raise ValueError("The number of returned spectra should match the number of positions")
         
             self.add_from_pos_plus_array(pi, values, new_prop=new_prop, properties=properties, ax=spec_ax)
             if new_prop: # After first loop need to change behavior
                 new_prop = False
-                properties = -1
+                properties = self.n_properties - 1
 
 
     def sum_properties(self,properties=None,in_place=True):
@@ -947,8 +973,7 @@ class Grid():
         
         sum_grid = np.expand_dims(np.sum(self.grid[...,tuple(properties)],axis=-1),-1)
         if in_place:
-            self.grid = np.concatenate((self.grid,sum_grid),axis=-1)
-            self.n_properties += 1
+            self.add_new_prop(sum_grid)
 
             return self
             

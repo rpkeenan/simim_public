@@ -70,6 +70,29 @@ def test_Grid_init_options():
     assert np.all(g1.grid == g2.grid)
     assert np.all(g1.grid == g3.grid)
 
+def test_add_new_prop():
+    g = Grid(1, (5,5), (10,10), (1,1))
+
+    g.add_new_prop()
+    assert g.n_properties == 2
+
+    with pytest.raises(Exception):
+        g.add_new_prop(10)
+    with pytest.raises(Exception):
+        g.add_new_prop(np.zeros((10,10)))
+
+    g.init_grid()
+    assert g.n_properties == 2
+    assert g.grid.shape == (10,10,2)
+
+    g.add_new_prop(np.zeros((10,10)))
+    assert g.n_properties == 3
+    assert g.grid.shape == (10,10,3)
+
+    g.add_new_prop(np.zeros((10,10,2)))
+    assert g.n_properties == 5
+    assert g.grid.shape == (10,10,5)
+
 
 def test_crop():
     g = Grid(1, (5,5), (10,10), (1,1))
@@ -344,3 +367,4 @@ def test_add_array_3d():
     assert g.grid[2,2,0] == 1
     assert g.grid[2,0,2] == 1
     assert g.grid[0,2,2] == 1
+
