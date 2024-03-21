@@ -1,14 +1,20 @@
 import os
 import warnings
+import shutil
 from fnmatch import fnmatch
 
 from urllib.request import urlretrieve
 import requests
+try:
+    from importlib.resources import files
+except:
+    from importlib_resources import files
 
 import numpy as np
 
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
+from simim.siminterface._testing import _testsnaps
 
 class UniversemachineCatalogs(SimCatalogs):
     def __init__(self,
@@ -43,6 +49,8 @@ class UniversemachineCatalogs(SimCatalogs):
             self.allsnaps = np.arange(118)
         elif sim == 'UniverseMachine-MDPL2':
             self.allsnaps = np.arange(126)
+        elif sim == '_testbox':
+            self.allsnaps = np.arange(2)
 
         super().__init__(sim, path, snaps, updatepath)
 
@@ -56,8 +64,14 @@ class UniversemachineCatalogs(SimCatalogs):
         elif self.sim == 'UniverseMachine-MDPL2':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/MDPL2_SFR/'
             self._loader = self._bin_loader
+        elif self.sim == '_testbox':
+            simim_path = files('simim')
+            self.webpage = simim_path.joinpath('resources')
+            self._loader = self._ascii_loader
 
-        if os.path.exists(self.web_path):
+        if self.sim == '_testbox':
+            self.web_files = _testsnaps
+        elif os.path.exists(self.web_path):
             self.web_files = np.load(self.web_path)
         else:
             # Get file names and scale factors from the interweb
@@ -75,7 +89,7 @@ class UniversemachineCatalogs(SimCatalogs):
         # we like already.
         # Note that binary files have different units for halo masses
         # than the text files + different format for position/velocity data
-        if self.sim == 'UniverseMachine-BolshoiPlanck':
+        if self.sim == 'UniverseMachine-BolshoiPlanck' or self.sim == '_testbox':
             self.basic_fields = {
                 #X Y Z: halo position (comoving Mpc/h)
                 #VX VY VZ: halo velocity (physical peculiar km/s)
@@ -300,7 +314,7 @@ class UniversemachineCatalogs(SimCatalogs):
         self.metadata = {'name':self.sim,
                          'number_snaps':len(self.web_files)}
         # Assign the correct data for different simulation boxes
-        if self.sim in ['UniverseMachine-BolshoiPlanck','UniverseMachine-SMDPL','UniverseMachine-MDPL2']:
+        if self.sim in ['UniverseMachine-BolshoiPlanck','UniverseMachine-SMDPL','UniverseMachine-MDPL2','_testbox']:
             self.metadata['cosmo_name'] = 'Planck'
             self.metadata['cosmo_omega_matter'] = 0.307
             self.metadata['cosmo_omega_lambda'] = 0.693
@@ -313,6 +327,8 @@ class UniversemachineCatalogs(SimCatalogs):
             self.metadata['box_edge'] = 400
         elif self.sim == 'UniverseMachine-MDPL2':
             self.metadata['box_edge'] = 1000
+        elif self.sim == '_testbox':
+            self.metadata['box_edge'] = 10
 
         self.box_edge = self.metadata['box_edge']
         self.h = self.metadata['cosmo_h']
@@ -391,7 +407,10 @@ class UniversemachineCatalogs(SimCatalogs):
             snap = self.download_snaps[i]
             print("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
             file_path = os.path.join(self.path,'raw',self.web_files[snap])
-            urlretrieve(self.webpage+self.web_files[snap],file_path)
+            if self.sim == '_testbox':
+                shutil.copy(self.webpage.joinpath(self.web_files[snap]),file_path)
+            else:
+                urlretrieve(self.webpage+self.web_files[snap],file_path)
 
 # Wrapper for back compatibility
 def universemachine_catalogs(*args, **kwargs):
