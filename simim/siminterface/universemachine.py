@@ -231,7 +231,7 @@ class UniversemachineCatalogs(SimCatalogs):
                                     ('m','f'),('v','f'),('mp','f'),('vmp','f'),('r','f'),
                                     ('rank1','f'),('rank2','f'),('ra','f'),('rarank','f'),
                                     ('sm','f'),('icl','f'),('sfr','f'),('obs_sm','f'),('obs_sfr','f'),('obs_ssfr','f'),('smhm','f'),('obs_uv','f')])
-        data_raw = np.genfromtxt(os.path.join(path,self.web_files[snapshot]), dtype=dtype_raw, comments='#')
+        data_raw = np.loadtxt(os.path.join(path,self.web_files[snapshot]), dtype=dtype_raw, comments='#')
         subhaols = {}
         for key in fields:
             subhaols[key] = data_raw[key]
