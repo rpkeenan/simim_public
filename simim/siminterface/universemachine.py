@@ -14,7 +14,8 @@ import numpy as np
 
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
-from simim.siminterface._testing import _testsnaps
+
+_testsnaps = np.array(['sfr_catalog_0.055623.txt','sfr_catalog_0.506185.txt','sfr_catalog_0.994717.txt'])
 
 class UniversemachineCatalogs(SimCatalogs):
     def __init__(self,
@@ -50,7 +51,7 @@ class UniversemachineCatalogs(SimCatalogs):
         elif sim == 'UniverseMachine-MDPL2':
             self.allsnaps = np.arange(126)
         elif sim == '_testbox':
-            self.allsnaps = np.arange(2)
+            self.allsnaps = np.arange(len(_testsnaps))
 
         super().__init__(sim, path, snaps, updatepath)
 
@@ -66,7 +67,7 @@ class UniversemachineCatalogs(SimCatalogs):
             self._loader = self._bin_loader
         elif self.sim == '_testbox':
             simim_path = files('simim')
-            self.webpage = simim_path.joinpath('resources')
+            self.webpage = simim_path.joinpath('resources','_testbox')
             self._loader = self._ascii_loader
 
         if self.sim == '_testbox':
@@ -77,9 +78,9 @@ class UniversemachineCatalogs(SimCatalogs):
             # Get file names and scale factors from the interweb
             try:
                 html_text = requests.get(self.webpage).text
-                files = [t for t in html_text.split(' ') if fnmatch(t, "*sfr_catalog_*")]
-                files = [t.split('"')[1] for t in files]
-                self.web_files = np.array(files)
+                web_files = [t for t in html_text.split(' ') if fnmatch(t, "*sfr_catalog_*")]
+                web_files = [t.split('"')[1] for t in web_files]
+                self.web_files = np.array(web_files)
             except:
                 raise ValueError("Unable to access file names on {}".format(self.webpage))
             np.save(self.web_path,self.web_files)
@@ -163,7 +164,7 @@ class UniversemachineCatalogs(SimCatalogs):
             }
         
         # Fields in ascii but not binary files: smhm, obs_sssfr
-        if self.sim == 'UniverseMachine-BolshoiPlanck':
+        if self.sim == 'UniverseMachine-BolshoiPlanck' or self.sim == '_testbox':
             #SSFR: observed SSFR
             self.matter_fields['obs_ssfr'] = [('ssfr_obs','f','?',0)]
             #SMHM: SM/HM ratio
@@ -308,7 +309,7 @@ class UniversemachineCatalogs(SimCatalogs):
         # Check that metadata doesn't already exist
         if not redownload:
             if os.path.exists(self.meta_path):
-                warnings.warn("Metadata appears to exist already")
+                warnings.warn("Metadata appears to exist already: {}".format(self.meta_path))
                 return
 
         self.metadata = {'name':self.sim,
@@ -388,7 +389,8 @@ class UniversemachineCatalogs(SimCatalogs):
             os.mkdir(os.path.join(self.path,'raw'))
 
         # Download metadata if not present
-        self.download_meta(redownload=False)
+        if not os.path.exists(self.meta_path):
+            self.download_meta()
 
         # Add a check for already downloaded files
         if redownload:
