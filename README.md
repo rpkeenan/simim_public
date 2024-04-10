@@ -28,4 +28,5 @@ Change Log
 ----------
 Version 0.3.5
 - Update ascii loader for UniverseMachine to use less memory and hopefully run faster
+- Gridder for spectra
 - Minor bug fixes and some tests
