@@ -2,6 +2,7 @@
 # All in SI units
 c = 2.99792458e8 # m s^-1; speed of light
 kB = 1.3806e-23 # m^2 kg s^-2 K^-1; boltzmann constant
+hP = 6.62607015e-34 # J Hz^-1; Planck constant
 
 ### UNIT CONVERSION ###
 Lsun_to_W = 3.828e26
