@@ -302,7 +302,7 @@ class IllustrisCatalogs(SimCatalogs):
         # File naming conventions for the raw simulation downloads:
         if self.sim in _illsims:
             self.raw_fname = 'groups_'
-        if self.sim == _tngsims:
+        if self.sim in _tngsims:
             self.raw_fname = 'fof_subhalo_tab_'
 
     # Function to load the data in a format we want:
