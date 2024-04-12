@@ -8,7 +8,7 @@ authors = [{name = "R P Keenan"}]
 description = "Code for simulating the radio, sub-mm and FIR sky"
 readme = "README.md"
 license = {file = "LICENSE"}
-version = "0.3.5"
+version = "0.3.6"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
