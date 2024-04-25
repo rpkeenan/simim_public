@@ -63,8 +63,7 @@ class _SimIMPaths():
         """Create a directory root/simim_resources/simulations"""
 
         # Get the right thing for the home directory
-        if root == '~':
-            root = os.path.expanduser("~")
+        root = os.path.expanduser(root)
 
         # Check if a root already exists and whehter it should be replaced
         if self.root is not None:

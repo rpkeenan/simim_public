@@ -22,7 +22,7 @@ class SnapHandler(Handler):
     snapshot with only the snapshot index-number specified.
     """
 
-    def __init__(self,path,snap,redshift,cosmo,box_edge):
+    def __init__(self,path,snap,redshift,cosmo,box_edge,in_h_units=False):
         """Initialize Handler for a simulation snapshot
         
         Parameters
@@ -37,23 +37,48 @@ class SnapHandler(Handler):
         cosmo : dict
             Dictionary containing the cosmological parameters for the simulation
         box_edge : float
-            The edge length of the simulation box, should be in units of Mpc/h.
+            The edge length of the simulation box, should ALWAYS be in units of Mpc/h.
+        in_h_units : bool
+            If True, values will be returned, plotted, etc. in units including little h.
+            If False, little h dependence will be removed. This can be overridden in 
+            most method calls.
         """
 
-        super().__init__(path,objectname='Snapshot',groupname='Snapshot {}'.format(snap))
+        self.h = cosmo.h
+        self.box_edge_h = box_edge
+        self.box_edge_no_h = box_edge / self.h
+        super().__init__(path,objectname='Snapshot',groupname='Snapshot {}'.format(snap),in_h_units=in_h_units)
 
         self.redshift = redshift
         self.cosmo = cosmo
-        self.box_edge = box_edge
-        self.box_edge_no_h = box_edge / self.h
-
+        
         self.extra_props['cosmo'] = self.cosmo
         self.extra_props['redshift'] = self.redshift
+        self.extra_props['box_edge_h'] = self.box_edge_h
+        self.extra_props['box_edge_no_h'] = self.box_edge_h / self.h
+
+    def set_in_h_units(self,in_h_units):
+        """Globally set whether units are interpreted to be in little h units
+
+        Changes the default way units are processed
+        
+        Parameters
+        ----------
+        in_h_units : bool
+            If True, values will, by default, be returned in units including little h.
+            If False, little h dependence will be removed.
+        """
+
+        self.default_in_h_units = in_h_units
+        if in_h_units:
+            self.box_edge = self.box_edge_h 
+        else:
+            self.box_edge = self.box_edge_no_h
         self.extra_props['box_edge'] = self.box_edge
-        self.extra_props['box_edge_no_h'] = self.box_edge / self.h
+
 
     def grid(self,*property_names,
-             in_h_units=False,use_all_inds=False,
+             in_h_units=None,use_all_inds=False,
              res=None,xlim=None,ylim=None,zlim=None,
              norm=None):
         """Place selected properties into a 3d grid
@@ -66,10 +91,10 @@ class SnapHandler(Handler):
         ----------
         property_names : str
             The name or names of properties in the Handler instance
-        in_h_units : bool, default=False
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, positions and property values fed to the gridder will be
             in units including little h. If False, little h dependence will be 
-            removed.
+            removed. Defaults to whatever is set globally for the Handler instance.
         use_all_inds : bool, default=False
             If True function all halos will be gridded, otherwise only
             active halos will be included.
@@ -93,13 +118,16 @@ class SnapHandler(Handler):
             The gridded properties
         """
 
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+
         x = self.return_property('pos_x',in_h_units=in_h_units,use_all_inds=use_all_inds)
         y = self.return_property('pos_y',in_h_units=in_h_units,use_all_inds=use_all_inds)
         z = self.return_property('pos_z',in_h_units=in_h_units,use_all_inds=use_all_inds)
         props = np.array([self.return_property(p,in_h_units=in_h_units,use_all_inds=use_all_inds) for p in property_names]).T
         
         if in_h_units:
-            side = self.box_edge
+            side = self.box_edge_h
         else:
             side = self.box_edge_no_h
 
@@ -148,7 +176,7 @@ class SimHandler():
     when they are no longer in use (or at least make it convenient to do so).
     """
 
-    def __init__(self,sim,init_snaps=False):
+    def __init__(self,sim,init_snaps=False,in_h_units=False):
         """Initialize Handler for a specified simulation
 
         Provides a generic interface for interacting with data from
@@ -167,6 +195,10 @@ class SimHandler():
             handler is called for. This is generally not necessary, but is
             used when creating properties for all snapshots but NOT writing
             them to disk.
+        in_h_units : bool
+            If True, values will be returned, plotted, etc. in units including little h.
+            If False, little h dependence will be removed. This can be overridden in 
+            most method calls.
         """
 
         # Check that we can handle the specified sim
@@ -194,14 +226,22 @@ class SimHandler():
         self.z_bins.append(snaps_sorted[-1]['redshift_max'])
         self.z_bin_snaps = [snap['index'] for snap in snaps_sorted]
 
+        # How to deal with h
+        self.default_in_h_units = in_h_units
+
         # Make the cosmology
         self.cosmo = FlatLambdaCDM(H0=100*self.metadata['cosmo_h']*u.km/u.s/u.Mpc,
                                    Om0=self.metadata['cosmo_omega_matter'],
                                    Ob0=self.metadata['cosmo_omega_baryon'],
                                    Tcmb0=2.7255*u.K)
-        self.box_edge = self.metadata['box_edge']
-        self.box_edge_no_h = self.box_edge / self.h
+        self.box_edge_h = self.metadata['box_edge']
+        self.box_edge_no_h = self.box_edge_h / self.h
 
+        if self.default_in_h_units:
+            self.box_edge = self.box_edge_h
+        else:
+            self.box_edge = self.box_edge_no_h
+        
         # Get keys and units
         with h5py.File(os.path.join(self.path,'data.hdf5'),'r') as file:
             snaps = [i for i in file.keys()]
@@ -239,24 +279,50 @@ class SimHandler():
             snap = self.snap_meta['index'][i]
             redshift = self.snap_meta['redshift'][i]
 
-            self.snap_handlers[str(snap)] = SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
+            self.snap_handlers[str(snap)] = SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge_h,in_h_units=self.default_in_h_units)
         print("Snapshots initialized.")
         self.init_snaps = True
 
-    def number_volumes(self,volume,in_h_units=False):
+    def set_in_h_units(self,in_h_units):
+        """Globally set whether units are interpreted to be in little h units
+
+        Changes the default way units are processed
+        
+        Parameters
+        ----------
+        in_h_units : bool
+            If True, values will, by default, be returned in units including little h.
+            If False, little h dependence will be removed.
+        """
+
+        self.default_in_h_units = in_h_units
+        if in_h_units:
+            self.box_edge = self.box_edge_h 
+        else:
+            self.box_edge = self.box_edge_no_h
+        
+        if self.init_snaps:
+            for snap in self.snap_handlers.values():
+                snap.set_in_h_units(in_h_units)
+
+
+    def number_volumes(self,volume,in_h_units=None):
         """Compute the number of times a specified volume can fit in the simulation box
         
         Parameters
         ----------
         volume : float
             The volume to check in units of Mpc^3
-        in_h_units : bool, default = False
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True the value of volume will be assumed to have units of
             (Mpc/h)^3
         """
 
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+
         if in_h_units:
-            return volume / self.box_edge**3
+            return volume / self.box_edge_h**3
         else:
             return volume / self.box_edge_no_h**3
 
@@ -316,7 +382,7 @@ class SimHandler():
 
         return self.keys
 
-    def get_mass_index(self,mass,snap,in_h_units=False):
+    def get_mass_index(self,mass,snap,in_h_units=None):
         """Find the indices above a specified mass
 
         Parameters
@@ -325,7 +391,7 @@ class SimHandler():
             Minimum mass to access in Msun units
         snap : int
             Number of snapshot to be extracted
-        in_h_units : bool (default=False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, mass will be taken to have units including little h,
             otherwise, it will be assumed to have units with no h dependence.
 
@@ -334,6 +400,9 @@ class SimHandler():
         index : int
             The index
         """
+
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
 
         if not snap in self.snap_meta['index']:
             raise ValueError("Snapshot not found")
@@ -377,7 +446,7 @@ class SimHandler():
         else:
             snap = snap_meta['index']
             redshift = snap_meta['redshift']
-            return SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge)
+            return SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge_h)
 
     def get_snap_from_z(self,z):
         """Return a SnapHandler instance for the snapshot closest to a requested redshift
@@ -395,7 +464,7 @@ class SimHandler():
 
         return self.get_snap(self.z_to_snap(z))
 
-    def set_property_range(self,property_name=None,pmin=-np.inf,pmax=np.inf,reset=True, in_h_units=False):
+    def set_property_range(self,property_name=None,pmin=-np.inf,pmax=np.inf,reset=True, in_h_units=None):
         """Restrict property range for all snapshots
         
         This is a wraper around SnapHandler.set_property_range
@@ -415,12 +484,15 @@ class SimHandler():
             pmax. If False, the active indices will be that satisfy pmin<=p<=pmax
             and which were previously in the active indices (ie this allows
             selection over multiple properties.)
-        in_h_units : bool (default=False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, pmin and pmax will be taken to have units including little h,
             otherwise, they will be assumed to have units with no h dependence
             (and have the correct dependency applied before setting cuts for parameters
             where the stored catalog values are in h units).
         """
+
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
 
         if not self.init_snaps:
             raise ValueError("This handler instance was not initialized with snapshots available")
@@ -542,7 +614,7 @@ class SimHandler():
             handler.delete_property(*property_names)
 
     def snap_stat(self, stat_function, kwargs, kw_remap={}, other_kws={},
-                  give_args_in_h_units=False, use_all_inds=False, snaps=None):
+                  give_args_in_h_units=None, use_all_inds=False, snaps=None):
         """Evaluate stat_function over every snapshot and return results
 
         This is a wraper around SnapHandler.eval_stat that iteratively 
@@ -565,7 +637,7 @@ class SimHandler():
         use_all_inds : bool, default=False
             If True function will be computed using all halos, otherwise only
             active halos will be evaluated.
-        give_args_in_h_units : bool, default=False
+        give_args_in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be fed to stat_function in units including little h.
             If False, little h dependence will be removed.
         snaps : list, optional
@@ -579,6 +651,9 @@ class SimHandler():
         redshifts : list
             List containing the redshift of each snapshot        
         """
+
+        if give_args_in_h_units is None:
+            give_args_in_h_units = self.default_in_h_units
 
         vals = []
         redshifts = []

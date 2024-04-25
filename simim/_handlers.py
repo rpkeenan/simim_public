@@ -13,7 +13,7 @@ class Handler():
     code.
     """
 
-    def __init__(self,path,objectname,groupname):
+    def __init__(self,path,objectname,groupname,in_h_units):
         """Initialize the Handler instance
 
         Parameters
@@ -24,6 +24,10 @@ class Handler():
             A name for the type of object contained
         groupname : string
             A name for the specific object contained
+        in_h_units : bool
+            If True, values will be returned, plotted, etc. in units including little h.
+            If False, little h dependence will be removed. This can be overridden in 
+            most method calls.
         """
 
         self.path = path
@@ -54,6 +58,23 @@ class Handler():
         self.inds_all = np.arange(self.nhalos_all).astype('int')
         self.inds_active = np.arange(self.nhalos_all).astype('int')
         self.nhalos_active = len(self.inds_active)
+
+        # Little h
+        self.set_in_h_units(in_h_units)
+
+    def set_in_h_units(self,in_h_units):
+        """Globally set whether units are interpreted to be in little h units
+
+        Changes the default way units are processed
+        
+        Parameters
+        ----------
+        in_h_units : bool
+            If True, values will, by default, be returned in units including little h.
+            If False, little h dependence will be removed.
+        """
+
+        self.default_in_h_units = in_h_units
 
     def extract_keys(self,set='any'):
         """Get the fields attached to a file
@@ -163,7 +184,7 @@ class Handler():
 
             self.properties_loaded.pop(property_name, None)
 
-    def return_property(self, property_name, use_all_inds=False, in_h_units=False):
+    def return_property(self, property_name, use_all_inds=False, in_h_units=None):
         """Load a property from lightcone file and return
 
         Parameters
@@ -174,15 +195,19 @@ class Handler():
             If True values will be returned for all halos, otherwise only
             active halos will be returned. Default is False, but by default
             all halos are active
-        in_h_units : bool (default is False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be returned in units including little h.
-            If False, little h dependence will be removed.
+            If False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         property_values : array
             Values of the requested property
         """
+
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
 
         if use_all_inds:
             inds = self.inds_all
@@ -372,7 +397,7 @@ class Handler():
                     self.properties_units.pop(property_name,None)
                     self.properties_h_dependence.pop(property_name,None)
 
-    def set_property_range(self,property_name=None,pmin=-np.inf,pmax=np.inf,reset=True, in_h_units=False):
+    def set_property_range(self,property_name=None,pmin=-np.inf,pmax=np.inf,reset=True, in_h_units=None):
         """Set a range in a given property to be the active indices. If no
         arguments are passed, this resets the active indices to all halos
 
@@ -389,17 +414,21 @@ class Handler():
             pmax. If False, the active indices will be that satisfy pmin<=p<=pmax
             and which were previously in the active indices (ie this allows
             selection over multiple properties.)
-        in_h_units : bool (default=False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, pmin and pmax will be taken to have units including little h,
             otherwise, they will be assumed to have units with no h dependence
             (and have the correct dependency applied before setting cuts for parameters
-            where the stored catalog values are in h units).
+            where the stored catalog values are in h units). Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         None
         """
-
+        
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+        
         if property_name is None:
             self.inds_active = np.copy(self.inds_all)
 
@@ -416,7 +445,7 @@ class Handler():
 
     def eval_stat(self, stat_function, kwargs, kw_remap={}, other_kws={},
                   use_all_inds=False,
-                  give_args_in_h_units=False):
+                  give_args_in_h_units=None):
         """Evaluate stat_function over the objects in a Handler instance
         and return the result
 
@@ -441,9 +470,10 @@ class Handler():
         use_all_inds : bool, default=False
             If True function will be computed using all halos, otherwise only
             active halos will be evaluated.
-        give_args_in_h_units : bool, default=False
+        give_args_in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be fed to stat_function in units including little h.
-            If False, little h dependence will be removed.
+            If False, little h dependence will be removed first. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
@@ -456,8 +486,10 @@ class Handler():
         ``handler``:
         
         >>> handler.eval_stat(np.sum, kwargs=['a'], kw_remap={'a':'mass'})
-
         """
+
+        if give_args_in_h_units is None:
+            give_args_in_h_units = self.default_in_h_units
 
         # Check that target has required fields (ie kwargs) - as written this is incompatible with remapping keywords
         # for kwarg in kwargs:
@@ -489,7 +521,7 @@ class Handler():
     @pltdeco
     def plot(self, xname, *ynames,
              use_all_inds = False,
-             save=None, axkws={}, plotkws={},in_h_units=False):
+             save=None, axkws={}, plotkws={},in_h_units=None):
         """Make a scatter plot of two properties
 
         Parameters
@@ -513,16 +545,21 @@ class Handler():
         plotkws : dict, optional
             A dictionary of keyword args and values that will be fed to
             plt.plot() when creating the plot data
-        in_h_units : bool (default is False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be plotted in units including little h. If
-            False, little h dependence will be removed.
+            False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         None
         """
 
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+
         fig,ax = plt.subplots()
+    
         fig.subplots_adjust(left=.15,right=.95,bottom=.15,top=.95)
         ax.set(**axkws)
         
@@ -553,7 +590,7 @@ class Handler():
     @pltdeco
     def hist(self, *property_names,
              use_all_inds = False,
-             logtransform=False, save=None, axkws={}, plotkws={},in_h_units=False):
+             logtransform=False, save=None, axkws={}, plotkws={},in_h_units=None):
         """Make a histogram of a property
 
         Parameters
@@ -575,16 +612,19 @@ class Handler():
         plotkws : dict, optional
             A dictionary of keyword args and values that will be fed to
             plt.hist() when creating the plot data
-        in_h_units : bool (default is False)
+        in_h_units : bool (default is determined by self.default_in_h_units)
             If True, values will be plotted in units including little h. If
-            False, little h dependence will be removed.
-
+            False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
 
         Returns
         -------
         None
         """
-
+        
+        if in_h_units is None:
+            in_h_units = self.default_in_h_units
+        
         fig,ax = plt.subplots()
         ax.set(**axkws)
 
