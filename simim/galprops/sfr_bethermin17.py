@@ -193,7 +193,7 @@ class bethermin17_base():
 
         # i is counter, idx is snap number
         for i,idx in enumerate(handler.snap_meta['index']):
-            print("\033[1m"+"Perroming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
+            print("\033[1m"+"Perfoming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
             
             snap = handler.get_snap(idx)
             
