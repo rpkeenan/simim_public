@@ -447,7 +447,8 @@ class SimCatalogs():
             else:
                 snaps_to_do = add_snaps
 
-
+            # Keeps old metadata - maybe I should be updating all metadata though since some things are 
+            # relative to other snaps
             meta_snaps = meta_snaps[~np.isin(meta_snaps['index'], snaps_to_do)]
             new_snaps = self.snap_meta[np.isin(self.snap_meta['index'], snaps_to_do)]
             meta_snaps = np.concatenate((meta_snaps, new_snaps))
@@ -474,7 +475,7 @@ class SimCatalogs():
                     if key in subhalos.keys():
                         subhalos[key] = self.transform_keys[key](subhalos[key],self.h)
                 
-                ## Old version - kept for now in cause new version causes bugs
+                ## Old version - kept here for now in case new version causes bugs
                 ## new version is generic and much more flexible
                 # # Put mass in Msun/h
                 # for key in self.mass_e8_keys:
