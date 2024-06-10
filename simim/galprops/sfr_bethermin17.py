@@ -218,6 +218,7 @@ class bethermin17_base():
             if len(snap_haloprop) > 0:
                 mstarofhalo, _ = am_dfcat(snap_haloprop,smf_freeze,missing_pmass_low_p1=missing_pmass_low_p1,missing_pmass_low_p2=missing_pmass_low_p2)
                 smgrid[i] = mstarofhalo(halopropgrid)
+        print()
 
         np.save(os.path.join(self.path,'mass_axis.npy'), halopropgrid)
         np.save(os.path.join(self.path,'redshift_axis.npy'), zgrid)
