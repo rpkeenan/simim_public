@@ -27,7 +27,7 @@ but are relatively sparse for the galprops, lightcone, and siminterface modules.
 Change Log
 ----------
 Version 0.3.6
-- Correct critical but in downloading TNG simulation data
+- Correct critical bug in downloading TNG simulation data
 
 Version 0.3.5
 - Update ascii loader for UniverseMachine to use less memory and hopefully run faster
