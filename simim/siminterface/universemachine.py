@@ -1,14 +1,21 @@
 import os
 import warnings
+import shutil
 from fnmatch import fnmatch
 
 from urllib.request import urlretrieve
 import requests
+try:
+    from importlib.resources import files
+except:
+    from importlib_resources import files
 
 import numpy as np
 
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
+
+_testsnaps = np.array(['sfr_catalog_0.055623.txt','sfr_catalog_0.506185.txt','sfr_catalog_0.994717.txt'])
 
 class UniversemachineCatalogs(SimCatalogs):
     def __init__(self,
@@ -43,6 +50,8 @@ class UniversemachineCatalogs(SimCatalogs):
             self.allsnaps = np.arange(118)
         elif sim == 'UniverseMachine-MDPL2':
             self.allsnaps = np.arange(126)
+        elif sim == '_testbox':
+            self.allsnaps = np.arange(len(_testsnaps))
 
         super().__init__(sim, path, snaps, updatepath)
 
@@ -56,16 +65,22 @@ class UniversemachineCatalogs(SimCatalogs):
         elif self.sim == 'UniverseMachine-MDPL2':
             self.webpage = 'https://halos.as.arizona.edu/UniverseMachine/DR1/MDPL2_SFR/'
             self._loader = self._bin_loader
+        elif self.sim == '_testbox':
+            simim_path = files('simim')
+            self.webpage = simim_path.joinpath('resources','_testbox')
+            self._loader = self._ascii_loader
 
-        if os.path.exists(self.web_path):
+        if self.sim == '_testbox':
+            self.web_files = _testsnaps
+        elif os.path.exists(self.web_path):
             self.web_files = np.load(self.web_path)
         else:
             # Get file names and scale factors from the interweb
             try:
                 html_text = requests.get(self.webpage).text
-                files = [t for t in html_text.split(' ') if fnmatch(t, "*sfr_catalog_*")]
-                files = [t.split('"')[1] for t in files]
-                self.web_files = np.array(files)
+                web_files = [t for t in html_text.split(' ') if fnmatch(t, "*sfr_catalog_*")]
+                web_files = [t.split('"')[1] for t in web_files]
+                self.web_files = np.array(web_files)
             except:
                 raise ValueError("Unable to access file names on {}".format(self.webpage))
             np.save(self.web_path,self.web_files)
@@ -75,7 +90,7 @@ class UniversemachineCatalogs(SimCatalogs):
         # we like already.
         # Note that binary files have different units for halo masses
         # than the text files + different format for position/velocity data
-        if self.sim == 'UniverseMachine-BolshoiPlanck':
+        if self.sim == 'UniverseMachine-BolshoiPlanck' or self.sim == '_testbox':
             self.basic_fields = {
                 #X Y Z: halo position (comoving Mpc/h)
                 #VX VY VZ: halo velocity (physical peculiar km/s)
@@ -149,7 +164,7 @@ class UniversemachineCatalogs(SimCatalogs):
             }
         
         # Fields in ascii but not binary files: smhm, obs_sssfr
-        if self.sim == 'UniverseMachine-BolshoiPlanck':
+        if self.sim == 'UniverseMachine-BolshoiPlanck' or self.sim == '_testbox':
             #SSFR: observed SSFR
             self.matter_fields['obs_ssfr'] = [('ssfr_obs','f','?',0)]
             #SMHM: SM/HM ratio
@@ -217,7 +232,7 @@ class UniversemachineCatalogs(SimCatalogs):
                                     ('m','f'),('v','f'),('mp','f'),('vmp','f'),('r','f'),
                                     ('rank1','f'),('rank2','f'),('ra','f'),('rarank','f'),
                                     ('sm','f'),('icl','f'),('sfr','f'),('obs_sm','f'),('obs_sfr','f'),('obs_ssfr','f'),('smhm','f'),('obs_uv','f')])
-        data_raw = np.genfromtxt(os.path.join(path,self.web_files[snapshot]), dtype=dtype_raw, comments='#')
+        data_raw = np.loadtxt(os.path.join(path,self.web_files[snapshot]), dtype=dtype_raw, comments='#')
         subhaols = {}
         for key in fields:
             subhaols[key] = data_raw[key]
@@ -294,13 +309,13 @@ class UniversemachineCatalogs(SimCatalogs):
         # Check that metadata doesn't already exist
         if not redownload:
             if os.path.exists(self.meta_path):
-                warnings.warn("Metadata appears to exist already")
+                warnings.warn("Metadata appears to exist already: {}".format(self.meta_path))
                 return
 
         self.metadata = {'name':self.sim,
                          'number_snaps':len(self.web_files)}
         # Assign the correct data for different simulation boxes
-        if self.sim in ['UniverseMachine-BolshoiPlanck','UniverseMachine-SMDPL','UniverseMachine-MDPL2']:
+        if self.sim in ['UniverseMachine-BolshoiPlanck','UniverseMachine-SMDPL','UniverseMachine-MDPL2','_testbox']:
             self.metadata['cosmo_name'] = 'Planck'
             self.metadata['cosmo_omega_matter'] = 0.307
             self.metadata['cosmo_omega_lambda'] = 0.693
@@ -313,6 +328,8 @@ class UniversemachineCatalogs(SimCatalogs):
             self.metadata['box_edge'] = 400
         elif self.sim == 'UniverseMachine-MDPL2':
             self.metadata['box_edge'] = 1000
+        elif self.sim == '_testbox':
+            self.metadata['box_edge'] = 10
 
         self.box_edge = self.metadata['box_edge']
         self.h = self.metadata['cosmo_h']
@@ -372,7 +389,8 @@ class UniversemachineCatalogs(SimCatalogs):
             os.mkdir(os.path.join(self.path,'raw'))
 
         # Download metadata if not present
-        self.download_meta(redownload=False)
+        if not os.path.exists(self.meta_path):
+            self.download_meta()
 
         # Add a check for already downloaded files
         if redownload:
@@ -391,7 +409,10 @@ class UniversemachineCatalogs(SimCatalogs):
             snap = self.download_snaps[i]
             print("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
             file_path = os.path.join(self.path,'raw',self.web_files[snap])
-            urlretrieve(self.webpage+self.web_files[snap],file_path)
+            if self.sim == '_testbox':
+                shutil.copy(self.webpage.joinpath(self.web_files[snap]),file_path)
+            else:
+                urlretrieve(self.webpage+self.web_files[snap],file_path)
 
 # Wrapper for back compatibility
 def universemachine_catalogs(*args, **kwargs):

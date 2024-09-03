@@ -23,3 +23,13 @@ What's Here
 but are relatively sparse for the galprops, lightcone, and siminterface modules.
 5. pyproject.toml, .readthedocs.yaml, .gitignore - config files for pip,
    readthedocs, and git
+
+Change Log
+----------
+Version 0.3.6
+- Correct critical bug in downloading TNG simulation data
+
+Version 0.3.5
+- Update ascii loader for UniverseMachine to use less memory and hopefully run faster
+- Gridder for spectra
+- Minor bug fixes and some tests

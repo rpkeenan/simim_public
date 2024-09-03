@@ -6,7 +6,7 @@ import numpy as np
 
 from simim.siminterface import _illustris_datahandling as idh
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
-from simim.siminterface._sims import _checksim
+from simim.siminterface._sims import _checksim, _illsims, _tngsims
 
 class IllustrisCatalogs(SimCatalogs):
     """Class to download and format Illustris or TNG group catalogs"""
@@ -46,14 +46,14 @@ class IllustrisCatalogs(SimCatalogs):
         """
         
         # Figure out the snapshots needed
-        if sim[:3] == 'Ill':
+        if sim in _illsims:
             self.allsnaps = np.arange(136)
 
             # For Illustris-1 some snapshots were lost
             if sim == 'Illustris-1':
                 self.allsnaps = np.setdiff1d(self.allsnaps,[53,55])
 
-        elif sim[:3] == 'TNG':
+        elif sim in _tngsims:
             self.allsnaps =  np.arange(100)
 
         # Initialize catalog
@@ -84,7 +84,7 @@ class IllustrisCatalogs(SimCatalogs):
                         'SubhaloVel':[('v_x','f','km/s',0),('v_y','f','km/s',0),('v_z','f','km/s',0)]
                         }
 
-        if self.sim[:3] == 'TNG' and self.sim[-4:] != 'Dark':
+        if self.sim in _tngsims and self.sim[-4:] != 'Dark':
             self.basic_fields['SubhaloFlag'] = [('flag','int','none',0)]
             # Flag field indicating suitability of this subhalo for
             # certain types of analysis. If zero, this subhalo should
@@ -215,7 +215,7 @@ class IllustrisCatalogs(SimCatalogs):
                                 ('phot_i','f','mag',0),('phot_z','f','mag',0)]
                             }
 
-        if self.sim[:3] == 'TNG' and self.sim[-4:] != 'Dark':
+        if self.sim in _tngsims and self.sim[-4:] != 'Dark':
             tng_matter_fields ={# Individual abundances: H, He, C, N, O, Ne, Mg, Si,
                          # Fe, total (in this order). Each is the dimensionless
                          # ratio of the total mass in that species divided by
@@ -300,9 +300,9 @@ class IllustrisCatalogs(SimCatalogs):
             warnings.warn("No data exists for snapshots {} - run .download".format(not_downloaded))
 
         # File naming conventions for the raw simulation downloads:
-        if self.sim[:3] == 'Ill':
+        if self.sim in _illsims:
             self.raw_fname = 'groups_'
-        if self.sim[:3] == 'TNG':
+        if self.sim in _tngsims:
             self.raw_fname = 'fof_subhalo_tab_'
 
     # Function to load the data in a format we want:
