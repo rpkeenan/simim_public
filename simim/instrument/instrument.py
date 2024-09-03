@@ -510,7 +510,7 @@ class Instrument:
         if spectral_response is None and self.default_spectral_response is None:
             raise ValueError("No default spectral response is set; one must be provided when initializing detector")
         if noise_function is None and self.default_noise_function is None:
-            raise ValueError("No default spectral response is set; one must be provided when initializing detector")
+            raise ValueError("No default noise function` is set; one must be provided when initializing detector")
 
         # Invalid case - no function or keywords, default specified without keywords
         if spatial_response is None and spatial_kwargs is None and self.default_spatial_kwargs is None:
@@ -1031,6 +1031,10 @@ class Instrument:
             fmin = 0.9 * np.min([self.detectors[k].reffreq for k in detector_names])
         if fmax is None:
             fmax = 1.1 * np.max([self.detectors[k].reffreq for k in detector_names])
+        
+        if np.any([xmin is None, xmax is None, ymin is None, ymax is None]):
+            if self.best_spatial_res is None:
+                raise ValueError("xmin, xmax, ymin, ymax must be specified or set self.best_spatial_res")
         if xmin is None:
             xmin = -5 * self.best_spatial_res
         if xmax is None:
