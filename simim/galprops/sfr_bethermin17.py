@@ -193,7 +193,7 @@ class bethermin17_base():
 
         # i is counter, idx is snap number
         for i,idx in enumerate(handler.snap_meta['index']):
-            print("\033[1m"+"Perroming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
+            print("\033[1m"+"Perfoming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
             
             snap = handler.get_snap(idx)
             
@@ -218,6 +218,7 @@ class bethermin17_base():
             if len(snap_haloprop) > 0:
                 mstarofhalo, _ = am_dfcat(snap_haloprop,smf_freeze,missing_pmass_low_p1=missing_pmass_low_p1,missing_pmass_low_p2=missing_pmass_low_p2)
                 smgrid[i] = mstarofhalo(halopropgrid)
+        print()
 
         np.save(os.path.join(self.path,'mass_axis.npy'), halopropgrid)
         np.save(os.path.join(self.path,'redshift_axis.npy'), zgrid)

@@ -320,7 +320,7 @@ class schechter_gen(rv_continuous):
 
     def _uppergammamod(self, a, x):
         """Schechter function parameterized as
-            Phi(L) = Phi* x (L/L*)^alpha * exp(-L/L*)
+            Phi(L) = Phi* x (L/L*)^alpha x exp(-L/L*)
         The logarithm of this is
             logPhi* + alpha x L - alpha x L* - L + L*
             logPhi* + (alpha-1) x L - (alpha+1) x L*
