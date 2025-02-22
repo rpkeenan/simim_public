@@ -24,7 +24,8 @@ class LCMaker():
                  openangle, aspect=1,
                  redshift_min=0, redshift_max='max',
                  minimum_mass=0,
-                 mode = 'box'
+                 mode = 'box',
+                 overwrite='check'
                  ):
         """Initialize light cone generator.
 
@@ -59,6 +60,7 @@ class LCMaker():
         mode : {'box', 'circle'}, optional
             defines the profile of the light cone - circular or rectangular,
             default is rectangular ('box')
+        overwrite : {'check', True, False}
 
         Returns
         -------
@@ -75,10 +77,13 @@ class LCMaker():
             raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
         self.sim = sim
 
+        if overwrite not in ['check',True,False]:
+            raise ValueError('overwrite must be True, False, or "check"')
+
         if sim not in paths.lcs.keys():
             paths._newlcpath(self.sim)
         self.lc_path = os.path.join(paths.lcs[sim], name)
-        if os.path.exists(self.lc_path):
+        if os.path.exists(self.lc_path) and overwrite=='check':
             print("A file for light cones of this name already exists.")
             print("Light cones already saved may be overwritten.")
             answer = input("Do you wish to proceed? y/n: ")
@@ -89,6 +94,8 @@ class LCMaker():
                     raise ValueError("name already in use")
                 print("Response not recognized.")
                 answer = input("Do you wish to proceed? y/n: ")
+        elif os.path.exists(self.lc_path) and overwrite==False:
+            raise ValueError("name already in use")
         else:
             os.mkdir(self.lc_path)
 
