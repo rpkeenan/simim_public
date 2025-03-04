@@ -14,6 +14,7 @@ from simim._pltsetup import *
 from simim._paths import _SimIMPaths
 from simim.siminterface import SimHandler
 from simim.siminterface._sims import _checksim
+from simim.lightcone.lchandler import LCIterator
 
 class LCMaker():
     """class for handling lightcone generation."""
@@ -96,8 +97,9 @@ class LCMaker():
                 answer = input("Do you wish to proceed? y/n: ")
         elif os.path.exists(self.lc_path) and overwrite==False:
             raise ValueError("name already in use")
-        else:
+        elif not os.path.exists(self.lc_path):
             os.mkdir(self.lc_path)
+        self.name = name
 
         # Save parameters
         if mode not in ['box','circle']:
@@ -789,3 +791,16 @@ class LCMaker():
             with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
                 file.attrs['status_extra_initialized'] = True
                 file.attrs['status_extra_completed'] = True
+
+    def get_LCIterator(self,in_h_units=False):
+        """Return a LCIterator object that can be used to iteratively analyse
+        the light cones
+        
+        Parameters
+        ----------
+        in_h_units : bool
+            If True, values returned, plotted, etc. by the LCIterator will be in
+            in units including little h. If False, little h dependence will be
+            removed. This can be overridden in most method calls.
+        """
+        return LCIterator(self.sim,self.name,np.arange(self.n),in_h_units=in_h_units,require_consistent=True)
