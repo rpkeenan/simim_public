@@ -574,7 +574,9 @@ class SimCatalogs():
             
             # Delete raw data if requested
             if realtime_clean_raw:
-                file_path = os.path.join(self.path,'raw',self._get_rawsnapfile(snap))
-                os.system("rm -r {}".format(file_path))
+                rawsnapfiles = self._get_rawsnapfiles(snap)
+                for file in rawsnapfiles:
+                    file_path = os.path.join(self.path,'raw',file)
+                    os.system("rm -r {}".format(file_path))
 
 
