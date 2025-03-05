@@ -113,11 +113,11 @@ class UchuuCatalogs(SimCatalogs):
             # #V@Mpeak: main progenitor's Vmax_Mpeak history
             # 'V@Mpeak':[('vmax_peak_history','f','km/s',0)],
 
-            #A_first_infall: scale factor at which the galaxy first passed through a larger halo
-            'A_first_infall':[('z_first_infall','f','km/s',0)],
+            # #A_first_infall: scale factor at which the galaxy first passed through a larger halo
+            # 'A_first_infall':[('z_first_infall','f','km/s',0)],
 
-            #A_last_infall: scale factor at which the galaxy last passed through a larger halo
-            'A_last_infall':[('z_last_infall','f','km/s',0)],
+            # #A_last_infall: scale factor at which the galaxy last passed through a larger halo
+            # 'A_last_infall':[('z_last_infall','f','km/s',0)],
             }
 
         self.matter_fields = {
@@ -170,15 +170,15 @@ class UchuuCatalogs(SimCatalogs):
                             #    'M_main_progenitor':apply_h,
                             #    'SM_main_progenitor':apply_h,
                             #    'ICL_main_progenitor':apply_h,
-                               'A_first_infall':scale_to_z,
-                               'A_last_infall':scale_to_z,
+                            #    'A_first_infall':scale_to_z,
+                            #    'A_last_infall':scale_to_z,
                                }
 
         # Check whether snapshots have been downloaded
         not_downloaded = []
         for snap in self.snaps:
             check = True
-            for df in [1,2,3,11,12]:
+            for df in [1,2,3]:
                 file_path = os.path.join(self.path,'raw',self.web_files[snap].replace('data1',f'data{df}'))
                 if not os.path.exists(file_path):
                     check = False
@@ -227,6 +227,7 @@ class UchuuCatalogs(SimCatalogs):
             # load stuff here...
             if len(fields_df) > 0:
                 file = path + self.web_files[snapshot].replace('data1',f'data{df}')
+
                 with h5py.File(file, "r") as file:
                     for f in fields_df:
                         subhalos[f] = file[f][:]
@@ -328,7 +329,7 @@ class UchuuCatalogs(SimCatalogs):
         np.save(self.meta_path,self.metadata)
         np.save(self.snap_meta_path,self.snap_meta)
 
-    def download(self, redownload=False, datafiles=[1,2,3,11,12]):
+    def download(self, redownload=False, datafiles=[1,2,3]):
         """Download UniverseMachine-uchuu catalogs
         
         Parameters
@@ -337,8 +338,8 @@ class UchuuCatalogs(SimCatalogs):
             The datafiles to include - 1: sfr, stellar mass, halo mass, etc. 2:
             position, 3: additional galaxy properties, 4-12: star formation
             history and related. See https://skun.iaa.csic.es/SUsimulations/UchuuDR2/Uchuu_UM/Readme_Uchuu_UM_data_structure.txt
-            for details. Defaults to [1, 2, 3, 11, 12]. Note that only data in
-            files 1, 2, 3, 11, 12 is currently used/supported
+            for details. Defaults to [1, 2, 3]. Note that only data in
+            files 1, 2, 3 is currently used/supported
         """
 
         if not os.path.exists(os.path.join(self.path,'raw')):
