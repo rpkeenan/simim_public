@@ -13,7 +13,7 @@ def test_import_siminterface():
     import simim.siminterface
 
     resources = dir(simim.siminterface)
-    for check_resource in ['IllustrisCatalogs','UniversemachineCatalogs','SnapHandler','SimHandler']:
+    for check_resource in ['IllustrisCatalogs','UniversemachineCatalogs','UchuuCatalogs','SnapHandler','SimHandler']:
         assert check_resource in resources
 
 def test_import_galprops():

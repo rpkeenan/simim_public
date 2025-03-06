@@ -555,8 +555,30 @@ class LCIterator():
                     else:
                         self.is_consistent = False
 
-        # # Programatically create wrappers around Handler methods
-        # for attr in ['eval_stat_evo','set_in_h_units',]
+        # Programatically create wrappers around Handler methods
+        # setting the list manually to avoid things that won't work well
+        # with wrappers (e.g. animation, plotting)
+
+        attrs = [('eval_stat',"""Evaluate stat_function over the objects in each lightcone"""),
+                 ('eval_stat_evo',"""Compute the evolution of a statistic over a specified set of redshift bins"""), 
+                 ('delete_property',"""Remove a property from the saved file on the disk"""),
+                 ('write_property',"""Write a property from object memory onto the saved file on the disk"""),
+                 ('delete_property',"""Remove a property from the saved file on the disk"""),
+                 ('make_property',"""Use a galprops.prop instance to evaluate a new property"""),
+                 ('return_property',"""Load a property from lightcone file and return"""),
+                 ('set_in_h_units',"""Globally set whether units are interpreted to be in little h units"""),
+                 ('set_property_range',"""Set a range in a given property to be the active indices"""),
+                 ]
+
+        for attr,doc in attrs:
+            def f(*args, attr=attr, **kwargs):
+                result = {}
+                for k, h in self.lc_handlers.items():
+                    result[k] = getattr(h,attr)(*args, **kwargs)
+                return result
+            f.__doc__ = doc
+            setattr(self,attr,f)
+
 
     def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=None,number=None):
         """Compute the comoving volume of a single light cone
@@ -588,20 +610,20 @@ class LCIterator():
             The volume of the lightcone in comoving Mpc^3
         """
 
-        if not self.isconsistent and number is None:
+        if not self.is_consistent and number is None:
             raise ValueError("Light cones do not have consistent parameters - specify 'number' to get volume based on the cosmology and geometry of a particular light cone")
         elif number is None:
             number = self.lc_numbers[0]
         elif number not in self.lc_numbers:
             raise ValueError("lightcone {} not in the list {}".format(number,self.lc_numbers))
 
-        return self.lc_handlers[str(number)].volume(redshift_min=redshift_min,redshift_max=redshift_max,shape=v,open_angle=open_angle,aspect_ratio=aspect_ratio,in_h_units=in_h_units)
+        return self.lc_handlers[str(number)].volume(redshift_min=redshift_min,redshift_max=redshift_max,shape=shape,open_angle=open_angle,aspect_ratio=aspect_ratio,in_h_units=in_h_units)
     
-    def eval_stat_evo(self, redshift_bins, stat_function, kwargs, kw_remap={}, other_kws={}, zmin_kw=False, zmax_kw=False, volume_kw=False, give_args_in_h_units=None):
-        """Compute the evolution of a statistic over a specified set of
-        redshift bins"""
+    # def eval_stat_evo(self, redshift_bins, stat_function, kwargs, kw_remap={}, other_kws={}, zmin_kw=False, zmax_kw=False, volume_kw=False, give_args_in_h_units=None):
+    #     """Compute the evolution of a statistic over a specified set of
+    #     redshift bins"""
 
-        result = {}
-        for k, h in self.lc_handlers.items():
-            result[k] = h.eval_stat_evo(redshift_bins=redshift_bins, stat_function=stat_function, kwargs=kwargs, kw_remap=kw_remap, other_kws=other_kws, zmin_kw=zmin_kw, zmax_kw=zmax_kw, volume_kw=volume_kw, give_args_in_h_units=give_args_in_h_units)
-        return result
+    #     result = {}
+    #     for k, h in self.lc_handlers.items():
+    #         result[k] = h.eval_stat_evo(redshift_bins=redshift_bins, stat_function=stat_function, kwargs=kwargs, kw_remap=kw_remap, other_kws=other_kws, zmin_kw=zmin_kw, zmax_kw=zmax_kw, volume_kw=volume_kw, give_args_in_h_units=give_args_in_h_units)
+    #     return result
