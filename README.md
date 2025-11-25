@@ -26,6 +26,11 @@ but are relatively sparse for the galprops, lightcone, and siminterface modules.
 
 Change Log
 ----------
+Version 0.3.10
+- Added a method for making spherical lightcones to represent nearby volumes
+- Made Schechter function work for abundance matching
+- Various bug fixes
+
 Version 0.3.8
 - Add support for UniverseMachine galaxy catalogs for Uchuu the simulations (docs forthcoming)
 - Minor bug fixes
