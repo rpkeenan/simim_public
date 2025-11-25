@@ -685,7 +685,7 @@ class LCMaker(GenericLCMaker):
 
                 # Iterate through each light cone
                 for lc_ind in range(n):
-                    # print(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r')
+                    print(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r')
 
                     # Compute how far we can go in the box
                     buffer_distance = snap_meta['transverse_distance_max'] * pointing_buffer_coef[lc_ind]
@@ -833,7 +833,7 @@ class LCMaker(GenericLCMaker):
                                 redshift_index['index'][i] += len(inds)
                             lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-                            print(' '*80,end='\r')
+                print(' '*80,end='\r')
 
         # Indicate that light cones are completed
         for i in range(n):
@@ -1133,7 +1133,7 @@ class SphereMaker(GenericLCMaker):
                             redshift_index['index'][i] += len(inds)
                         lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-                        print(' '*80,end='\r')
+            print(' '*80,end='\r')
 
         # Indicate that light cones are completed
         for i in range(n):
