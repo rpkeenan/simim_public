@@ -14,5 +14,7 @@ def test_simchecker():
     with pytest.raises(Exception):
         _sims._checksim('UniverseMachine-BigPickle')
 
+    _sims._checksim('UniverseMachine-uchuu')
+
     with pytest.raises(Exception):
         _sims._checksim('Uchuu')

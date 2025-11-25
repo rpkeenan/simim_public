@@ -12,6 +12,8 @@ from simim._paths import _SimIMPaths
 from simim._handlers import Handler
 from simim._pltsetup import *
 
+from fnmatch import fnmatch
+
 class LCHandler(Handler):
     """Class to handle I/O and basic analysis for light cone hdf5 files
     
@@ -28,7 +30,7 @@ class LCHandler(Handler):
         """Initialize Handler for a specified lightcone
 
         This class a generic interface for interacting with data in SimIM's
-        standardize lightcone format. 
+        standardized lightcone format. 
 
         Light cones must first be built using simim.lightcone.LCMaker.
         Lightcones are saved in sets in the SimIM data directory, each set of
@@ -79,18 +81,20 @@ class LCHandler(Handler):
                                    Om0=self.metadata['cosmo_omega_matter'],
                                    Ob0=self.metadata['cosmo_omega_baryon'],
                                    Tcmb0=2.7255*u.K)
-        self.open_angle = self.metadata['open angle']
+        
         self.shape = self.metadata['shape']
-        self.aspect_ratio = self.metadata['aspect ratio']
         self.minimum_redshift = self.metadata['minimum redshift']
         self.maximum_redshift = self.metadata['maximum redshift']
         self.extra_props['cosmo'] = self.cosmo
-        self.extra_props['open_angle'] = self.open_angle
         self.extra_props['shape'] = self.shape
-        self.extra_props['aspect_ratio'] = self.aspect_ratio
         self.extra_props['minimum redshift'] = self.minimum_redshift
         self.extra_props['maximum redshift'] = self.maximum_redshift
 
+        if self.shape in ['circle','box']:
+            self.open_angle = self.metadata['open angle']
+            self.aspect_ratio = self.metadata['aspect ratio']
+            self.extra_props['open_angle'] = self.open_angle
+            self.extra_props['aspect_ratio'] = self.aspect_ratio
 
     def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=None):
         """Compute the comoving volume of the light cone
@@ -129,6 +133,7 @@ class LCHandler(Handler):
             redshift_max=self.metadata['maximum redshift']
         if shape == None:
             shape=self.metadata['shape']
+        
         if open_angle == None:
             open_angle=self.metadata['open angle']
         if aspect_ratio == None:
@@ -470,3 +475,150 @@ class LCHandler(Handler):
             anim.save(save+'.mp4')
 
         plt.show()
+
+class LCIterator():
+    """Class to perform analysis on many light cone hdf5 files iteratively
+    
+    The general philosophy of Handlers is to not load actual properties of 
+    a halo into memory until they are requested, and to remove them from 
+    memory when they are no longer in use (or at least make it convenient
+    to do so). Here we create the handlers for each lightcone and write 
+    wrappers that iterate over all lcs and call the relevant LCHandler 
+    method.
+    """
+
+    def __init__(self,sim,name,numbers=None,in_h_units=False,require_consistent=True):
+        """Initialize Handler for all lightcone
+
+        This class a generic interface for interacting with data in SimIM's
+        standardized lightcone format, with the ability to iterate over 
+        multiple light cones.
+
+        Light cones must first be built using simim.lightcone.LCMaker.
+        Lightcones are saved in sets in the SimIM data directory, each set of
+        lightcones can contain one or many individual lightcones, created in a
+        uniform way from a parent simulation. Accessing a set of lightcones
+        requires specifying the name of the parent simulation, the
+        name of the lightcone set, and optionally, the numbers of the desired 
+        lightcones (default is to assume all lightcones are desired)
+
+        Parameters
+        ----------
+        sim : str
+            The name of the simulation from which the lightcone was generated. 
+        name : str
+            The name of the lightcone set. 
+        numbers : list, optional
+            List containing numeric indices of the lightcones within the set to include
+        in_h_units : bool
+            If True, values will be returned, plotted, etc. in units including little h.
+            If False, little h dependence will be removed. This can be overridden in 
+            most method calls.
+        require_consistent : bool
+            If True (default), will check that all light cones have the same basic parameters
+        """
+
+        # Handle file path stuff
+        paths = _SimIMPaths()
+        if not sim in paths.lcs:
+            raise ValueError("Lightcones for simulation {} not found. Try generating them or updating the path".format(sim))
+        path = paths.lcs[sim]
+
+        if not os.path.exists(os.path.join(path,name)):
+            raise ValueError("Lightcones named '{}' not found. Try generating them or updating the path".format(name))
+        path = os.path.join(path, name)
+
+        # Figure out what lightcones to load
+        if numbers is None:
+            files = os.listdir(path)
+            numbers = [int(f.split('_')[1].split('.')[0]) for f in files if fnmatch(f,'lc_*.hdf5')]
+            print("No lightcone numbers specified, initializing all {} light cones in {}/{}".format(len(numbers),sim,name))
+        
+        # Need these for iteration
+        self.n_lcs = len(numbers)
+        self.lc_numbers = np.array(numbers,ndmin=1)
+
+        # Load all of the handlers as a dictionary
+        self.lc_handlers = {}
+        for i_lc in self.lc_numbers:
+            self.lc_handlers[str(i_lc)] = LCHandler(sim, name, i_lc, in_h_units)
+
+        # Consistency checking
+        self.require_consistent = require_consistent
+        self.is_consistent = True
+
+        # Check for consistency of metadata
+        ref_lc = self.lc_handlers[str(self.lc_numbers[0])]
+        for attr in ['cosmo','open_angle','aspect_ratio','minimum_redshift','maximum_redshift']:
+            setattr(self,attr,getattr(ref_lc,attr))
+            for i_lc in self.lc_numbers[1:]:
+                if getattr(self.lc_handlers[str(i_lc)],attr) != getattr(self,attr):
+                    if self.require_consistent:
+                        raise ValueError("Attribute {} does not match for light cones {} and {}".format(attr, self.lc_numbers[0],i_lc))
+                    else:
+                        self.is_consistent = False
+
+        # Programatically create wrappers around Handler methods
+        # setting the list manually to avoid things that won't work well
+        # with wrappers (e.g. animation, plotting)
+
+        attrs = [('eval_stat',"""Evaluate stat_function over the objects in each lightcone"""),
+                 ('eval_stat_evo',"""Compute the evolution of a statistic over a specified set of redshift bins"""), 
+                 ('delete_property',"""Remove a property from the saved file on the disk"""),
+                 ('write_property',"""Write a property from object memory onto the saved file on the disk"""),
+                 ('delete_property',"""Remove a property from the saved file on the disk"""),
+                 ('make_property',"""Use a galprops.prop instance to evaluate a new property"""),
+                 ('return_property',"""Load a property from lightcone file and return"""),
+                 ('set_in_h_units',"""Globally set whether units are interpreted to be in little h units"""),
+                 ('set_property_range',"""Set a range in a given property to be the active indices"""),
+                 ]
+
+        for attr,doc in attrs:
+            def f(*args, attr=attr, **kwargs):
+                result = {}
+                for k, h in self.lc_handlers.items():
+                    result[k] = getattr(h,attr)(*args, **kwargs)
+                return result
+            f.__doc__ = doc
+            setattr(self,attr,f)
+
+
+    def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=None,number=None):
+        """Compute the comoving volume of a single light cone
+
+        Parameters
+        ----------
+        redshift_min, redshift_max : float, optional
+            The minimum/maximum redshift to consider - the minimum/maximum
+            redshift of the lightcone by default
+        open_angle : float, optional
+            The opening angle of the lightcone - by default matches the
+            lightcone
+        aspect_ratio : float, optional
+            The aspect ratio of the box sides (for square lightcones) -
+            by default matches the lightcone
+        shape : 'box', 'circle', optional
+            The shape of the box - by default matches the lightcone
+        in_h_units : bool (default is determined by self.default_in_h_units)
+            If True, values will be returned in units including little h.
+            If False, little h dependence will be removed. Defaults to whatever
+            is set globally for the Handler instance.
+        number : int, optional
+            Number of the light cone to execute function for, only relevant
+            if light cones do not have consistent parameters
+
+        Returns
+        -------
+        volume : float
+            The volume of the lightcone in comoving Mpc^3
+        """
+
+        if not self.is_consistent and number is None:
+            raise ValueError("Light cones do not have consistent parameters - specify 'number' to get volume based on the cosmology and geometry of a particular light cone")
+        elif number is None:
+            number = self.lc_numbers[0]
+        elif number not in self.lc_numbers:
+            raise ValueError("lightcone {} not in the list {}".format(number,self.lc_numbers))
+
+        return self.lc_handlers[str(number)].volume(redshift_min=redshift_min,redshift_max=redshift_max,shape=shape,open_angle=open_angle,aspect_ratio=aspect_ratio,in_h_units=in_h_units)
+    

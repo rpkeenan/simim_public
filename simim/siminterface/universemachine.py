@@ -233,12 +233,12 @@ class UniversemachineCatalogs(SimCatalogs):
                                     ('rank1','f'),('rank2','f'),('ra','f'),('rarank','f'),
                                     ('sm','f'),('icl','f'),('sfr','f'),('obs_sm','f'),('obs_sfr','f'),('obs_ssfr','f'),('smhm','f'),('obs_uv','f')])
         data_raw = np.loadtxt(os.path.join(path,self.web_files[snapshot]), dtype=dtype_raw, comments='#')
-        subhaols = {}
+        subhalos = {}
         for key in fields:
-            subhaols[key] = data_raw[key]
+            subhalos[key] = data_raw[key]
         n_halos = len(data_raw)
 
-        return subhaols, n_halos
+        return subhalos, n_halos
 
     def _bin_loader(self, path, snapshot, fields):
         """Loader to get a field from a snapshot halo catalog - for binary formatted
@@ -287,9 +287,9 @@ class UniversemachineCatalogs(SimCatalogs):
 
         return subhalos, n_halos
 
-    def _get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfiles(self, snapshot):
         """Get path to a snapshot's raw file"""
-        return self.web_files[snapshot]
+        return [self.web_files[snapshot]]
 
     def download_meta(self, redownload=False):
         """Download and generate metadata for the set of snapshots 
@@ -340,7 +340,6 @@ class UniversemachineCatalogs(SimCatalogs):
         order = np.argsort(a)
         a = a[order]
         redshifts = redshifts[order]
-        self.web_files = self.web_files[order]
 
         # Snapshots for different simulation boxes
         numbers = np.arange(len(self.web_files))

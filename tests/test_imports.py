@@ -13,7 +13,7 @@ def test_import_siminterface():
     import simim.siminterface
 
     resources = dir(simim.siminterface)
-    for check_resource in ['IllustrisCatalogs','UniversemachineCatalogs','SnapHandler','SimHandler']:
+    for check_resource in ['IllustrisCatalogs','UniversemachineCatalogs','UchuuCatalogs','SnapHandler','SimHandler']:
         assert check_resource in resources
 
 def test_import_galprops():
@@ -34,13 +34,13 @@ def test_import_map():
     for check_resource in ['Grid','Gridder','LoadGrid','GridFromAxes','GridFromAxesAndFunction','PSF','SpectralPSF','gridder_function',]:
         assert check_resource in resources
 
-def test_import_map():
+def test_import_lc():
     """Make sure the expected files are imported - simim.lightcone"""
 
     import simim.lightcone
 
     resources = dir(simim.lightcone)
-    for check_resource in ['LCMaker','LCHandler']:
+    for check_resource in ['LCMaker','SphereMaker','LCHandler']:
         assert check_resource in resources
 
 def test_import_inst():

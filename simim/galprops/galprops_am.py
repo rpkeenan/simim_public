@@ -314,23 +314,38 @@ def am_dfdf(prop1_rv:rv_continuous, prop2_rv:rv_continuous,
     return p2ofp1, p1ofp2
 
 
-
 class schechter_gen(rv_continuous):
     """Scipy distribution generator for a schechter function"""
 
+    def lum_function(self, x, x0, alpha, phi0, xmin):
+        """Returns phi(M*) to be multiplied by dM*"""
+        phi = np.exp(-x/x0) * phi0 * (x/x0)**alpha * 1/x0
+        if np.asarray(x).ndim > 0:
+            phi[x<xmin] = 0
+        elif x<xmin:
+            phi = 0
+        return phi
+
+    def lum_function_int(self, x, x0, alpha, phi0, xmin):
+        int = phi0 * self._uppergammamod(alpha+1, x/x0)
+        if np.asarray(x).ndim > 0:
+            int[x<xmin] = phi0 * self._uppergammamod(alpha+1, xmin/x0)
+        else:
+            if x<xmin:
+                int = 1
+
+        return int
+
     def _uppergammamod(self, a, x):
-        """Schechter function parameterized as
-            Phi(L) = Phi* x (L/L*)^alpha x exp(-L/L*)
-        The logarithm of this is
-            logPhi* + alpha x L - alpha x L* - L + L*
-            logPhi* + (alpha-1) x L - (alpha+1) x L*
+        """Double schechter function parameterized as
+            Phi(x) = [Phi1 (x/x*)^alpha1 + Phi2 (x/x*)^alpha2)] exp(-x/x*) / x*
+
         The integral of the LF, which serves as the denominator of the likelihood function
-        is
-            int(L_min,inf)(Phi(L)dL) = Phi* x int(L_min,inf)[(L/L*)^alpha x exp(-L/L*) dL]
-        substitute u = L/L*, umin = L_min/L*, du = dL/L* to get
-                            = Phi* x int(u_min,inf)[u^alpha x exp(-u) du*L*]
-                            = Phi* x L* x int(u_min,inf)[u^alpha x exp(-u) du]
-                            = Phi* x L* x upper_gamma(alpha+1,u_min)
+        is int(x_min,inf)(Phi(x)dx) = phi1 int(x_min,inf)[(x/x*)^alpha1 exp(-x/x*) dx/x*]
+            + phi2 int(x_min,inf)[(x/x*)^alpha2 exp(-x/x*) dx/x*]
+        substitute u = x/x*, umin = x_min/x*, du = dx/x* to get
+                            = Phi1 int(u_min,inf)[u^alpha1 exp(-u) du] + Phi2 int(u_min,inf)[u^alpha2 exp(-u) du]
+                            = Phi1 upper_gamma(alpha1+1,u_min) + Phi2 upper_gamma(alpha2+1,u_min)
         the latter step is only true for the case where alpha > -1, due to the definition
         of the gamma function. However, we can use integration by parts to extend the
         result for smaller alpha.
@@ -397,36 +412,38 @@ class schechter_gen(rv_continuous):
 
         return gp
     
-    def _pdf(self, x, x0, alpha, xmin):
-        norm = self.self.uppergammamod(alpha+1, xmin/x0)
-        p = (np.asarray(x)/x0)**alpha * 1/x0 * np.exp(-np.asarray(x)/x0) / norm
+    def _pdf(self, x, x0, alpha, phi0, xmin):
+        norm = self.lum_function_int(xmin, x0, alpha, phi0, xmin)
+        p = self.lum_function(x, x0, alpha, phi0, xmin)
         p[x<xmin] = 0
+
         return p
     
-    def _logpdf(self, x, x0, alpha, xmin):
-        norm = np.log(self.uppergammamod(alpha+1, xmin/x0))
-        p = alpha * np.log(np.asarray(x)) - (alpha+1) * np.log(x0) + (-x/x0) - norm
-        p[x<xmin] = -np.inf
-        return p
-    
-    def _cdf(self, x, x0, alpha, xmin):
-        norm = self.uppergammamod(alpha+1, xmin/x0)
-        int = self.uppergammamod(alpha+1, x/x0)
+    def _cdf(self, x, x0, alpha, phi0, xmin):
+        norm = self.lum_function_int(xmin, x0, alpha, phi0, xmin)
+        int = self.lum_function_int(x, x0, alpha, phi0, xmin)
         c = (norm-int)/norm
         c[x<xmin] = 0
+
         return c
 
-    def _logcdf(self, x, x0, alpha, xmin):
-        norm = self.uppergammamod(alpha+1, xmin/x0)
-        int = self.uppergammamod(alpha+1, x/x0)
-        c = np.log(norm-int) - np.log(norm)
-        c[x<xmin] = -np.inf
-        return c
+    def _ppf(self, cdf, x0, alpha, phi0, xmin):
+        if np.asarray(phi0).ndim > 0:
+            x0 = np.asarray(x0)[0]
+            phi0 = np.asarray(phi0)[0]
+            alpha = np.asarray(alpha)[0]
+            xmin = np.asarray(xmin)[0]
+        
+        xint = np.logspace(np.log10(xmin),np.log10(xmin)+20,10001)
+        yint = self.lum_function_int(xint, x0, alpha, phi0, xmin)
+        yint = 1 - yint/self.lum_function_int(xmin, x0, alpha, phi0, xmin)
+        
+        return np.interp(cdf, yint, xint)
 
-    def _get_support(self, x0, alpha, xmin, **kwargs):
+    def _get_support(self, x0, alpha, phi0, xmin, **kwargs):
         return xmin, np.inf
         
-    def _argcheck(self, x0, alpha, xmin):
+    def _argcheck(self, x0, alpha, phi0, xmin):
         """
         Get rid of the argcheck method since it's unclear what it does
         but breaks the pdf and cdf
@@ -435,8 +452,9 @@ class schechter_gen(rv_continuous):
             return 0
         if xmin<=0:
             return 0
+        if phi0<0:
+            return 0
         return 1
-    
 
 class double_schechter_gen(rv_continuous):
     """Scipy distribution generator for a double schechter function"""

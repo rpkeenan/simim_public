@@ -185,7 +185,7 @@ class Handler():
             self.properties_loaded.pop(property_name, None)
 
     def return_property(self, property_name, use_all_inds=False, in_h_units=None):
-        """Load a property from lightcone file and return
+        """Load a property from file and return
 
         Parameters
         ----------
@@ -238,7 +238,7 @@ class Handler():
                 else:
                     return value # multiplying non-float dtypes by self.h**0 still converts to float, don't want that...
 
-    def make_property(self, property, rename=None, kw_remap={}, other_kws={}, overwrite=False, use_all_inds=False):
+    def make_property(self, property, rename=None, kw_remap={}, other_kws={}, overwrite=False, use_all_inds=False, write_to_disk=False, overwrite_to_disk=False, dtype_to_disk=None, unload_to_disk=False):
         """Use a galprops.prop instance to evaluate a new property
 
         Parameters
@@ -252,20 +252,34 @@ class Handler():
         kw_remap : dict, optional
             A dictinary remaping kwargs of the property generating function to
             different properties of the lightcone. By default if the function
-            calls for kwarg 'x' it will be evaluated on simulation property 'x', but
-            passing the dictionary {'x':'y'} will result in the function being 
-            evaluated on simulation property 'y'.
+            calls for kwarg 'x' it will be evaluated on simulation property 'x',
+            but passing the dictionary {'x':'y'} will result in the function
+            being evaluated on simulation property 'y'.
         other_kws : dict, optional
-            A dictionary of additional keyword arguments passed directly to
-            the property.prop_function call
+            A dictionary of additional keyword arguments passed directly to the
+            property.prop_function call
         overwrite : bool, optional
             Default is False. If a property name is already in use and overwrite
             is False, an error will be raised. Otherwise the property will be
             overwritten.
         use_all_inds : bool
-            If True values will be assigned for all halos, otherwise only
-            active halos will be evaluated, and others will be assigned nan.
-
+            If True values will be assigned for all halos, otherwise only active
+            halos will be evaluated, and others will be assigned nan.
+        write_to_disk : bool
+            Default is False. If True, write assessed property to disk (note
+            use_all_inds must be True)
+        overwrite_to_disk : bool
+            Default is False. If a property name is already in use on disk and
+            overwrite_to_disk is False, an error will be raised when trying to
+            write to disk. Otherwise the property will be overwritten. Be
+            careful if you set this to True.
+        dtype_to_disk : None or data type
+            Specify the data type to use for saving writing the data - useful
+            for converting to lower precision floats for using less storage
+        unload_to_disk : bool
+            Default is False. If True, will unload properties after writing 
+            them to disk.
+            
         Returns
         -------
         None
@@ -276,6 +290,8 @@ class Handler():
             inds = self.inds_all
         else:
             inds = self.inds_active
+            if write_to_disk and not np.all(inds==self.inds_all):
+                raise ValueError("Cannot write to disk when using restricted index")
 
         # Handle renaming
         if isinstance(rename,str):
@@ -317,6 +333,11 @@ class Handler():
             if not overwrite_names[i]:
                 self.properties_generated.append(newname)
                 self.properties_all.append(newname)
+
+        if write_to_disk:
+            self.write_property(*names,overwrite=overwrite_to_disk,dtype=dtype_to_disk)
+            if unload_to_disk:
+                self.unload_property(*names)
 
     def write_property(self,*property_names,overwrite=False,dtype=None):
         """Write a property from object memory onto the saved file on

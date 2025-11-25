@@ -14,8 +14,347 @@ from simim._pltsetup import *
 from simim._paths import _SimIMPaths
 from simim.siminterface import SimHandler
 from simim.siminterface._sims import _checksim
+from simim.lightcone.lchandler import LCIterator
 
-class LCMaker():
+class GenericLCMaker():
+    """base class for LC makers - specific geometries implemented elsewhere
+    
+    A methods called build_lightcones must be defined for each subclass
+    """
+
+    def __init__(self,
+                 sim,
+                 name,
+                 minimum_mass,
+                 overwrite
+                 ):
+        """A full init specifying geometry should be created for any given LCMaker
+        that can call this function to check various inputs
+
+        Specify the simulation and light cone dimensions that will be used for
+        creating light cones. Initializing the LCMaker will not create any light
+        cones. This is done by the LCMaker.build_lightcones method.
+
+        Parameters
+        ----------
+        sim : str
+            The name of the simulation to be used. The simulation must be
+            supported by simim and downloaded in the simim_resources path
+        name : str
+            The name to give to generated light cones. They will be saved in the
+            path [simim_resources]/lightcones/[sim]/[name]/lc_[number].hdf5
+        minimum_mass : float
+            the minimum halo mass to include, in Msun/h.
+        overwrite : {'check', True, False}
+
+        Returns
+        -------
+        No return
+        """
+
+        # Check that we can handle the specified sim
+        _checksim(sim)
+
+        paths = _SimIMPaths()
+        if sim in paths.sims:
+            self.sim_path = paths.sims[sim]
+        else:
+            raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
+        self.sim = sim
+
+        if overwrite not in ['check',True,False]:
+            raise ValueError('overwrite must be True, False, or "check"')
+
+        if sim not in paths.lcs.keys():
+            paths._newlcpath(self.sim)
+        self.lc_path = os.path.join(paths.lcs[sim], name)
+        if os.path.exists(self.lc_path) and overwrite=='check':
+            print("A file for light cones of this name already exists.")
+            print("Light cones already saved may be overwritten.")
+            answer = input("Do you wish to proceed? y/n: ")
+
+            while answer != 'y':
+                if answer == 'n':
+                    print("Aborting setup")
+                    raise ValueError("name already in use")
+                print("Response not recognized.")
+                answer = input("Do you wish to proceed? y/n: ")
+        elif os.path.exists(self.lc_path) and overwrite==False:
+            raise ValueError("name already in use")
+        elif not os.path.exists(self.lc_path):
+            os.mkdir(self.lc_path)
+        self.name = name
+
+        # Save parameters
+        self.minimum_mass = minimum_mass
+
+        # Load some sim data and the class to handle extracting data
+        self.sim_handler = SimHandler(self.sim)
+        self.metadata = self.sim_handler.metadata
+        self.snap_meta = self.sim_handler.snap_meta
+        self.snap_keys_all = self.sim_handler.extract_snap_keys()
+        self.snap_keys = np.copy(self.snap_keys_all)
+        self.box_edge = self.metadata['box_edge']
+
+        # Cosmology class
+        self.cosmo = FlatLambdaCDM(H0=100*self.metadata['cosmo_h']*u.km/u.s/u.Mpc,
+                                   Om0=self.metadata['cosmo_omega_matter'],
+                                   Ob0=self.metadata['cosmo_omega_baryon'],
+                                   Tcmb0=2.7255*u.K)
+        z_steps = np.linspace(0,20.05,100000)
+        D_steps = self.cosmo.comoving_distance(z_steps).value * self.metadata['cosmo_h']
+        self.assign_z = interp1d(D_steps,z_steps)
+        self.assign_D = interp1d(z_steps,D_steps)
+
+        # Allow copying box?
+        if self.sim in ['Illustris-1','Illustris-2','Illustris-3','Illustris-1-Dark','Illustris-2-Dark','Illustris-3-Dark','TNG100-1','TNG100-2','TNG100-3','TNG100-1-Dark','TNG100-2-Dark','TNG100-3-Dark']:
+            self.copies_max = 2
+        elif self.sim in ['TNG300-1','TNG300-2','TNG300-3','TNG300-1-Dark','TNG300-2-Dark','TNG300-3-Dark']:
+            self.copies_max = 2
+        else:
+            self.copies_max = 1
+
+    def add_properties(self,*keys):
+        """Select additional properties to include in the light cone.
+        Should not be used for properties with position information (ie
+        velocity) which have to be transformed into the correct coordinates. Use
+        add_pos_properties instead. 
+        
+        This will be done for all lightcones in the set.
+
+        Parameters
+        ----------
+        keys : float or floats
+            the keys used to identify fields to add to the light cone
+
+        Returns
+        -------
+        none
+        """
+
+        # Make sure the keys exist, but aren't already included
+        pos_keys = ['v_x','v_y','v_z',
+                    'spin_x','spin_y','spin_z',
+                    'cm_x','cm_y','cm_z']
+
+        with h5py.File(os.path.join(self.lc_path,'lc_0000.hdf5'),'r') as file:
+            old_lc_keys = [i for i in file['Lightcone Full'].keys()]
+
+        new_lc_keys = []
+        for key in keys:
+            if key in pos_keys:
+                warnings.warn("Key '{}' is positional, use add_pos_properties instead".format(key))
+            elif key in old_lc_keys:
+                warnings.warn("Key '{}' already in light cone. Skipping".format(key))
+            elif key not in self.snap_keys_all and key != 'masscheck':
+                warnings.warn("Key '{}' not found".format(key))
+            else:
+                new_lc_keys.append(key)
+
+        keys = np.sort(new_lc_keys)
+
+        # Note in LC files that we're adding properties
+        for i in range(self.n):
+            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
+                file.attrs['status_extra_initialized'] = True
+                file.attrs['status_extra_completed'] = False
+
+                shape = file['Indexing']['sim_indices'].shape
+                chunks = file['Indexing']['sim_indices'].chunks
+                if shape[0] < chunks[0]:
+                    chunks = shape
+                for key in keys:
+                    file['Lightcone Full'].create_dataset(key,shape=shape,chunks=chunks)
+                    if key == 'masscheck':
+                        file['Lightcone Full'][key].attrs['units'] = self.sim_handler.key_units['mass']
+                        file['Lightcone Full'][key].attrs['h dependence'] = self.sim_handler.key_h_dependence['mass']
+                    else:
+                        file['Lightcone Full'][key].attrs['units'] = self.sim_handler.key_units[key]
+                        file['Lightcone Full'][key].attrs['h dependence'] = self.sim_handler.key_h_dependence[key]
+
+        # Open simulation file
+        with h5py.File(os.path.join(self.sim_path,'data.hdf5'),"r") as sim_file:
+
+            # Loop through snapshots
+            for snap_ind in range(len(self.snapshots_use)):
+
+                # Collect snap information
+                snap_meta = self.snapshots_use[snap_ind]
+                snap_name = 'Snapshot {}'.format(snap_meta['index'])
+                print("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
+
+                # Loop through keys
+                for key in keys:
+
+                    # Load the snapshot data for the basic fields
+                    snap_grp = sim_file[snap_name]
+                    mass_index = self.sim_handler.get_mass_index(self.minimum_mass,snap_meta['index'])
+
+                    masses = snap_grp['mass'][:mass_index]
+                    mass_indices_final = np.where(masses >= self.minimum_mass)[0]
+                    if len(mass_indices_final) > 0:
+                        mass_index_final = np.amax(mass_indices_final)+1
+                    else:
+                        mass_index_final = 0
+
+                    if key == 'masscheck':
+                        values = snap_grp['mass'][:mass_index_final]
+                    else:
+                        values = snap_grp[key][:mass_index_final]
+
+                    for lc_ind in range(self.n):
+                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+
+                        # Get indices of snap
+                        with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
+                            indexing = lc_file['Indexing']['sim_indices'][:]
+                            start = np.where(indexing['snap'] == snap_meta['index'])[0]
+                            if len(start) > 0:
+                                start = np.amin(start)
+                            else:
+                                start = 0
+                            indexing = indexing[indexing['snap']==snap_meta['index']]
+
+                            # Append the data
+                            lc_file['Lightcone Full'][key][start:start+len(indexing)] = values[indexing['index']]
+
+        # Note in LC files that we're done
+        for i in range(self.n):
+            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
+                file.attrs['status_extra_initialized'] = True
+                file.attrs['status_extra_completed'] = True
+
+    def add_pos_properties(self,*keys):
+        """Select additional properties to include in the light cone for
+        properties with position information (ie velocity).
+
+        This will be done for all lightcones in the set.
+
+        Parameters
+        ----------
+        keys : float or floats
+            the keys used to identify fields to include in the light cone 
+            (exclude the _x, _y, _z components, ie for velocity give keys=['v'] 
+            not keys=['v_x','v_y','v_z'])
+
+        Returns
+        -------
+        none
+        """
+
+        # Make sure the keys exist, but aren't already included
+        pos_keys = ['pos','v','spin','cm']
+
+        with h5py.File(os.path.join(self.lc_path,'lc_0000.hdf5'),'r') as file:
+            old_lc_keys = [i[:-2] for i in file['Lightcone Full'].keys() if i[:-2] in pos_keys]
+        old_lc_keys = np.unique(old_lc_keys)
+
+        new_lc_keys = []
+        for key in keys:
+            if key in old_lc_keys:
+                warnings.warn("Key '{}' already in light cone. Skipping".format(key))
+            elif key+'_x' not in self.snap_keys_all:
+                warnings.warn("Key '{}' not found".format(key))
+            else:
+                new_lc_keys.append(key)
+
+        keys = np.sort(new_lc_keys)
+
+        # Note in LC files that we're adding properties
+        for i in range(self.n):
+            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
+                file.attrs['status_extra_initialized'] = True
+                file.attrs['status_extra_completed'] = False
+
+                shape = file['Indexing']['sim_indices'].shape
+                chunks = file['Indexing']['sim_indices'].chunks
+                if shape[0] < chunks[0]:
+                    chunks = shape
+                for key in keys:
+                    for subkey in ['_x','_y','_z']:
+                        file['Lightcone Full'].create_dataset(key+subkey,shape=shape,chunks=chunks)
+                        file['Lightcone Full'][key+subkey].attrs['units'] = self.sim_handler.key_units[key+subkey]
+                        file['Lightcone Full'][key+subkey].attrs['h dependence'] = self.sim_handler.key_h_dependence[key+subkey]
+
+        # Open simulation file
+        with h5py.File(os.path.join(self.sim_path,'data.hdf5'),"r") as sim_file:
+
+            # Loop through snapshots
+            for snap_ind in range(len(self.snapshots_use)):
+
+                # Collect snap information
+                snap_meta = self.snapshots_use[snap_ind]
+                snap_name = 'Snapshot {}'.format(snap_meta['index'])
+                print("\033[1m"+"Collecting sources from Snapshot {}.                        ".format(snap_meta['index'])+"\033[0m", end='\r')
+
+                # Loop through keys
+                for key in keys:
+
+                    # Load the snapshot data for the basic fields
+                    snap_grp = sim_file[snap_name]
+                    mass_index = self.sim_handler.get_mass_index(self.minimum_mass,snap_meta['index'])
+
+                    masses = snap_grp['mass'][:mass_index]
+                    mass_indices_final = np.where(masses >= self.minimum_mass)[0]
+                    if len(mass_indices_final) > 0:
+                        mass_index_final = np.amax(mass_indices_final)+1
+                    else:
+                        mass_index_final = 0
+
+                    values = np.array([
+                        snap_grp[key+'_x'][:mass_index_final],
+                        snap_grp[key+'_y'][:mass_index_final],
+                        snap_grp[key+'_z'][:mass_index_final]])
+
+                    for lc_ind in range(self.n):
+                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+
+                        with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
+                            # Get indices of snap
+                            indexing = lc_file['Indexing']['sim_indices'][:]
+                            start = np.where(indexing['snap'] == snap_meta['index'])[0]
+                            if len(start) > 0:
+                                start = np.amin(start)
+                            else:
+                                start = 0
+                            indexing = indexing[indexing['snap']==snap_meta['index']]
+
+                            # Trim values to the indices
+                            lc_values = values[:,indexing['index']]
+
+                            # Get the matrices and do transformation
+                            los_matrix = lc_file.attrs['line of sight transformation matrix']
+                            pa_matrix = lc_file.attrs['position angle transformation matrix']
+                            lc_values = np.matmul(los_matrix,lc_values)
+                            lc_values = np.matmul(pa_matrix,lc_values)
+
+
+                            # Append the data
+                            lc_file['Lightcone Full'][key+'_x'][start:start+len(indexing)] = lc_values[1]
+                            lc_file['Lightcone Full'][key+'_y'][start:start+len(indexing)] = lc_values[2]
+                            lc_file['Lightcone Full'][key+'_z'][start:start+len(indexing)] = lc_values[0]
+
+        # Note in LC files that we're done
+        for i in range(self.n):
+            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
+                file.attrs['status_extra_initialized'] = True
+                file.attrs['status_extra_completed'] = True
+
+    def get_LCIterator(self,in_h_units=False):
+        """Return a LCIterator object that can be used to iteratively analyse
+        the light cones
+        
+        Parameters
+        ----------
+        in_h_units : bool
+            If True, values returned, plotted, etc. by the LCIterator will be in
+            in units including little h. If False, little h dependence will be
+            removed. This can be overridden in most method calls.
+        """
+        return LCIterator(self.sim,self.name,np.arange(self.n),in_h_units=in_h_units,require_consistent=True)
+
+
+class LCMaker(GenericLCMaker):
     """class for handling lightcone generation."""
 
     def __init__(self,
@@ -24,7 +363,8 @@ class LCMaker():
                  openangle, aspect=1,
                  redshift_min=0, redshift_max='max',
                  minimum_mass=0,
-                 mode = 'box'
+                 mode = 'box',
+                 overwrite='check'
                  ):
         """Initialize light cone generator.
 
@@ -59,40 +399,17 @@ class LCMaker():
         mode : {'box', 'circle'}, optional
             defines the profile of the light cone - circular or rectangular,
             default is rectangular ('box')
+        overwrite : {'check', True, False}
 
         Returns
         -------
         No return
         """
 
-        # Check that we can handle the specified sim
-        _checksim(sim)
+        # Basic input checks for any type of LC
+        super().__init__(sim,name,minimum_mass,overwrite)
 
-        paths = _SimIMPaths()
-        if sim in paths.sims:
-            self.sim_path = paths.sims[sim]
-        else:
-            raise ValueError("Simulation {} not available. Try installing it or updating the path".format(sim))
-        self.sim = sim
-
-        if sim not in paths.lcs.keys():
-            paths._newlcpath(self.sim)
-        self.lc_path = os.path.join(paths.lcs[sim], name)
-        if os.path.exists(self.lc_path):
-            print("A file for light cones of this name already exists.")
-            print("Light cones already saved may be overwritten.")
-            answer = input("Do you wish to proceed? y/n: ")
-
-            while answer != 'y':
-                if answer == 'n':
-                    print("Aborting setup")
-                    raise ValueError("name already in use")
-                print("Response not recognized.")
-                answer = input("Do you wish to proceed? y/n: ")
-        else:
-            os.mkdir(self.lc_path)
-
-        # Save parameters
+        # Save geometry parameters
         if mode not in ['box','circle']:
             raise ValueError("Invalid mode")
         self.mode = mode
@@ -102,16 +419,6 @@ class LCMaker():
             raise ValueError("Invalid mode")
         self.aspect = aspect
 
-        self.minimum_mass = minimum_mass
-
-        # Load some sim data and the class to handle extracting data
-        self.sim_handler = SimHandler(self.sim)
-        self.metadata = self.sim_handler.metadata
-        self.snap_meta = self.sim_handler.snap_meta
-        self.snap_keys_all = self.sim_handler.extract_snap_keys()
-        self.snap_keys = np.copy(self.snap_keys_all)
-        self.box_edge = self.metadata['box_edge']
-
         # Deal with redshift stuff
         if redshift_max == 'max':
             redshift_max = np.amax(self.snap_meta['redshift_max'])
@@ -119,16 +426,6 @@ class LCMaker():
             raise ValueError("redshift_min > redshift_max")
         self.redshift_min = redshift_min
         self.redshift_max = redshift_max
-
-        # Cosmology class
-        self.cosmo = FlatLambdaCDM(H0=100*self.metadata['cosmo_h']*u.km/u.s/u.Mpc,
-                                   Om0=self.metadata['cosmo_omega_matter'],
-                                   Ob0=self.metadata['cosmo_omega_baryon'],
-                                   Tcmb0=2.7255*u.K)
-        z_steps = np.linspace(0,20.05,100000)
-        D_steps = self.cosmo.comoving_distance(z_steps).value * self.metadata['cosmo_h']
-        self.assign_z = interp1d(D_steps,z_steps)
-
 
         # Check that we haven't requested something too big to fit in the box
         backsize = self.cosmo.comoving_transverse_distance(self.redshift_max).value
@@ -144,14 +441,6 @@ class LCMaker():
                 if self.redshift_max >= i['redshift_min']:
                     self.snapshots_use = np.concatenate((self.snapshots_use,[i]))
         self.snapshots_use = np.sort(self.snapshots_use,order='redshift')
-
-        # Allow copying box?
-        if self.sim[:3] in ['Ill']:
-            self.copies_max = 2
-        elif self.sim[:3] in ['TNG']:
-            self.copies_max = 2
-        else:
-            self.copies_max = 1
 
     def _initialize_los(self,openradius,rng):
         """Generates a line of sight for simulated light cones
@@ -557,228 +846,302 @@ class LCMaker():
                 file.attrs['finished'] = dtime.isoformat(' ')
 
 
-    def add_properties(self,*keys):
-        """Select additional properties to include in the light cone.
-        Should not be used for properties with position information (ie
-        velocity) which have to be transformed into the correct coordinates. Use
-        add_pos_properties instead. 
-        
-        This will be done for all lightcones in the set.
+class SphereMaker(GenericLCMaker):
+    """class for handling lightsphere generation. Initial version has limited functionality for making local volumes"""
+
+    def __init__(self,
+                 sim,
+                 name,
+                 redshift_min=0, redshift_max=0.1,
+                 minimum_mass=0,
+                 mode = 'sphere',
+                 overwrite='check'
+                 ):
+        """Initialize lightsphere generator.
+
+        Specify the simulation and light cone dimensions that will be used for
+        creating spherical shells. Initializing the SphereMaker will not create any light
+        cones. This is done by the SphereMaker.build_lightcones method.
 
         Parameters
         ----------
-        keys : float or floats
-            the keys used to identify fields to add to the light cone
+        sim : str
+            The name of the simulation to be used. The simulation must be
+            supported by simim and downloaded in the simim_resources path
+        name : str
+            The name to give to generated light cones. They will be saved in the
+            path [simim_resources]/lightcones/[sim]/[name]/lc_[number].hdf5
+        redshift_min : float, optional
+            Minimum redshift to include in the lightcone, default is 0
+        redshift_max : float or 'max', optional
+            Maximum redshift to include in the lightcone, default is 0.1 (this
+            code is currently only meant for simulating large surveys of the 
+            nearby universe)
+        minimum_mass : float (optional)
+            the minimum halo mass to include, in Msun/h. Default is 0 (include
+            all halos).
+        mode : {'sphere', 'hemisphere','quarter','eighth'}, optional
+            defines the profile of the light sphere - full sphere, hemisphere, quarter shpere or
+            eighth sphere
+        overwrite : {'check', True, False}
+
+        Returns
+        -------
+        No return
+        """
+
+        # Basic input checks for any type of LC
+        super().__init__(sim,name,minimum_mass,overwrite)
+
+        # Save geometry parameters
+        if mode not in ['sphere','hemisphere','quarter','eighth']:
+            raise ValueError("Invalid mode")
+        self.mode = mode
+
+        # Deal with redshift stuff
+        if redshift_max == 'max':
+            redshift_max = np.amax(self.snap_meta['redshift_max'])
+        if redshift_min > redshift_max:
+            raise ValueError("redshift_min > redshift_max")
+        self.redshift_min = redshift_min
+        self.redshift_max = redshift_max
+
+        # Check that we haven't requested something too big to fit in the box
+        if mode == 'eighth':
+            dmax = self.sim_handler.box_edge_no_h
+        else:
+            dmax = self.sim_handler.box_edge_no_h/2
+        if self.assign_D(redshift_max) > dmax:
+            raise ValueError(f"Simulation box (edge={self.sim_handler.box_edge_no_h:.1f}) is not large enough to contain the desired shell (rad={self.assign_D(redshift_max):.1f})")
+
+        # Figure out the range of snapshots needed
+        self.snapshots_use = np.zeros(0,dtype=self.snap_meta.dtype)
+        for i in self.snap_meta:
+            if self.redshift_min <= i['redshift_max']:
+                if self.redshift_max >= i['redshift_min']:
+                    self.snapshots_use = np.concatenate((self.snapshots_use,[i]))
+        self.snapshots_use = np.sort(self.snapshots_use,order='redshift')
+
+    def build_lightcones(self,
+                         n=1,
+                         rng=np.random.default_rng()):
+        """Code to construct a specified number of light cones
+
+        Parameters
+        ----------
+        n : int
+            Number of light cones to make
+        rng : numpy rng
+            Random number generator instance used to generate lightcone
+            useful for producing repeatable results.
 
         Returns
         -------
         none
+            Light cones are saved in the lightcones file in the resources
+            folder.
         """
 
-        # Make sure the keys exist, but aren't already included
-        pos_keys = ['v_x','v_y','v_z',
-                    'spin_x','spin_y','spin_z',
-                    'cm_x','cm_y','cm_z']
+        self.n = n
 
-        with h5py.File(os.path.join(self.lc_path,'lc_0000.hdf5'),'r') as file:
-            old_lc_keys = [i for i in file['Lightcone Full'].keys()]
+        # Print status
+        print("Generating lines of sight.")
 
-        new_lc_keys = []
-        for key in keys:
-            if key in pos_keys:
-                warnings.warn("Key '{}' is positional, use add_pos_properties instead".format(key))
-            elif key in old_lc_keys:
-                warnings.warn("Key '{}' already in light cone. Skipping".format(key))
-            elif key not in self.snap_keys_all and key != 'masscheck':
-                warnings.warn("Key '{}' not found".format(key))
-            else:
-                new_lc_keys.append(key)
+        # Set up pointing parameters - starting position
+        pointing_start = rng.random((n,3)) * self.box_edge
 
-        keys = np.sort(new_lc_keys)
+        # Pick which dimensions to flip
+        pointing_flips = rng.choice([-1,1],size=(n,3))
 
-        # Note in LC files that we're adding properties
-        for i in range(self.n):
-            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
-                file.attrs['status_extra_initialized'] = True
+        # Set up redshift indexing
+        # index will be the index of the first halo above the specified redshift
+        redshift_index = np.zeros(100,dtype=[('redshift','f'),('index','int')])
+        redshift_index['redshift'] = (10**np.linspace(np.log10(1+0),np.log10(1+20.05),100))-1
+
+        # Set up halo counter
+        n_halos = np.zeros(n,dtype='int')
+
+        # Data type for parent index properties
+        simindex_dtype = [('snap','int'),('index','int')]
+
+        # Start and end distances for the light cone,
+        # since we'll primarily work in terms of distance
+        distance_zmin = (self.cosmo.comoving_distance(self.redshift_min).value
+                         * self.metadata['cosmo_h'])
+        distance_zmax = (self.cosmo.comoving_distance(self.redshift_max).value
+                         * self.metadata['cosmo_h'])
+
+        # Initialize HDF5 file with metadata and a light cone dataset
+        # Print status
+        print("Creating files and adding metadata.")
+        for i in range(n):
+            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'w') as file:
+                for key in self.metadata.keys():
+                    file.attrs[key] = self.metadata[key]
+                file.attrs['snapshots'] = self.snapshots_use
+                file.attrs['parent sim'] = self.sim
+
+                file.attrs['minimum redshift'] = self.redshift_min
+                file.attrs['maximum redshift'] = self.redshift_max
+
+                file.attrs['shape'] = self.mode
+                file.attrs['start position'] = pointing_start[i]
+                file.attrs['box flips'] = pointing_flips[i]
+
+                file.attrs['mass cut'] = self.minimum_mass
+
+                dtime = datetime.datetime.today()
+                file.attrs['created'] = dtime.isoformat(' ')
+                file.attrs['finished'] = False
+                file.attrs['status_initialized'] = True
+                file.attrs['status_basic'] = False
+                file.attrs['status_extra_initialized'] = False
                 file.attrs['status_extra_completed'] = False
 
-                shape = file['Indexing']['sim_indices'].shape
-                chunks = file['Indexing']['sim_indices'].chunks
-                if shape[0] < chunks[0]:
-                    chunks = shape
-                for key in keys:
-                    file['Lightcone Full'].create_dataset(key,shape=shape,chunks=chunks)
-                    if key == 'masscheck':
-                        file['Lightcone Full'][key].attrs['units'] = self.sim_handler.key_units['mass']
-                        file['Lightcone Full'][key].attrs['h dependence'] = self.sim_handler.key_h_dependence['mass']
-                    else:
-                        file['Lightcone Full'][key].attrs['units'] = self.sim_handler.key_units[key]
-                        file['Lightcone Full'][key].attrs['h dependence'] = self.sim_handler.key_h_dependence[key]
+                idx = file.create_group('Indexing')
+                idx.create_dataset('redshift_indices',data=redshift_index)
 
         # Open simulation file
         with h5py.File(os.path.join(self.sim_path,'data.hdf5'),"r") as sim_file:
 
-            # Loop through snapshots
+            # Loop through boxes
             for snap_ind in range(len(self.snapshots_use)):
 
-                # Collect snap information
                 snap_meta = self.snapshots_use[snap_ind]
                 snap_name = 'Snapshot {}'.format(snap_meta['index'])
                 print("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
 
-                # Loop through keys
-                for key in keys:
+                # We will work in distance units mostly
+                # Calculate distance to use in box
+                start_distance = np.amax([snap_meta['distance_min'],distance_zmin])
+                end_distance = np.amin([snap_meta['distance_max'],distance_zmax])
 
-                    # Load the snapshot data for the basic fields
-                    snap_grp = sim_file[snap_name]
-                    mass_index = self.sim_handler.get_mass_index(self.minimum_mass,snap_meta['index'])
+                # Load the snapshot data for the basic fields
+                snap_grp = sim_file[snap_name]
+                mass_index = self.sim_handler.get_mass_index(self.minimum_mass,snap_meta['index'])
 
-                    masses = snap_grp['mass'][:mass_index]
-                    mass_indices_final = np.where(masses >= self.minimum_mass)[0]
-                    if len(mass_indices_final) > 0:
-                        mass_index_final = np.amax(mass_indices_final)+1
-                    else:
-                        mass_index_final = 0
+                masses = snap_grp['mass'][:mass_index]
+                mass_indices_final = np.where(masses >= self.minimum_mass)[0]
+                if len(mass_indices_final) > 0:
+                    mass_index_final = np.amax(mass_indices_final)+1
+                else:
+                    mass_index_final = 0
+                masses = masses[:mass_index_final]
 
-                    if key == 'masscheck':
-                        values = snap_grp['mass'][:mass_index_final]
-                    else:
-                        values = snap_grp[key][:mass_index_final]
+                positions0 = np.empty((mass_index_final,3))
+                positions0[:,0] = snap_grp['pos_x'][:mass_index_final]
+                positions0[:,1] = snap_grp['pos_y'][:mass_index_final]
+                positions0[:,2] = snap_grp['pos_z'][:mass_index_final]
 
-                    for lc_ind in range(self.n):
-                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+                # Iterate through each light cone
+                for lc_ind in range(n):
+                    # Now shift the box to start where we want to start
+                    positions = (positions0 * pointing_flips[lc_ind]) % self.box_edge
 
-                        # Get indices of snap
-                        with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
-                            indexing = lc_file['Indexing']['sim_indices'][:]
-                            start = np.where(indexing['snap'] == snap_meta['index'])[0]
-                            if len(start) > 0:
-                                start = np.amin(start)
-                            else:
-                                start = 0
-                            indexing = indexing[indexing['snap']==snap_meta['index']]
+                    # For eighth spheres, put the origin at the corner and call it good, for everything else, put the origin at the center of the box
+                    if self.mode in ['sphere','hemisphere','quarter']:
+                        positions = (positions - pointing_start[lc_ind] + self.box_edge/2) % self.box_edge - self.box_edge/2
+                    if self.mode == 'eighth':
+                        positions = (positions - pointing_start[lc_ind] + self.box_edge) % self.box_edge
 
-                            # Append the data
-                            lc_file['Lightcone Full'][key][start:start+len(indexing)] = values[indexing['index']]
+                    # Select halos within field
+                    candidate_distances2 = np.sum(positions**2,axis=1)
 
-        # Note in LC files that we're done
-        for i in range(self.n):
+                    # For sphere or eighth, the geometry is such that we just take everything at the relevant distances
+                    if self.mode in ['sphere','eighth']:
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2))[0]
+                    # For hemisphere and quarter sphere, we need cuts on the other axes
+                    if self.mode == 'hemisphere':
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0))[0]
+                    if self.mode == 'quarter':
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0) & (positions[:,1]>0))[0]
+                    
+                    selected_distances = np.sqrt(candidate_distances2[selected_indices])
+
+                    n_selected = len(selected_indices)
+                    n_halos[lc_ind] += n_selected
+
+                    # Sort by distance (which will become z)
+                    sorted = np.argsort(selected_distances)
+                    selected_indices = selected_indices[sorted]
+                    selected_distances = selected_distances[sorted]
+
+                    # Set the LC positions
+                    pos_x = positions[:,0][selected_indices]
+                    pos_y = positions[:,1][selected_indices]
+                    pos_z = positions[:,2][selected_indices]
+
+                    # Compute z, ra, dec for selected halos
+                    theta = np.arccos(pos_z / selected_distances)
+                    phi = np.arctan2(pos_y, pos_x)
+                    ra = phi % (2*np.pi)
+                    dec = np.pi/2 - theta
+                    halo_redshift = self.assign_z(selected_distances)
+
+                    # Get masses of halos
+                    halo_mass = masses[selected_indices % len(positions0)]
+
+                    # Save indices
+                    sim_index = np.zeros(
+                        len(pos_x), dtype = simindex_dtype)
+                    sim_index['snap'] = snap_meta['index']
+                    sim_index['index'] = selected_indices % len(positions0)
+
+                    # Add selected halos to some temporary storage
+                    props = ['pos_x','pos_y','pos_z','ra','dec','redshift','mass']
+                    vals = [pos_x,pos_y,pos_z,ra,dec,halo_redshift,halo_mass]
+                    units = [self.sim_handler.key_units['pos_x'],
+                                self.sim_handler.key_units['pos_y'],
+                                self.sim_handler.key_units['pos_z'],
+                                'radians','radians','None',
+                                self.sim_handler.key_units['mass']]
+                    h_dependence = [self.sim_handler.key_h_dependence['pos_x'],
+                                    self.sim_handler.key_h_dependence['pos_y'],
+                                    self.sim_handler.key_h_dependence['pos_z'],
+                                    0,0,0,
+                                    self.sim_handler.key_h_dependence['mass']]
+
+                    with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
+
+                        if snap_ind == 0:
+                            lc = lc_file.create_group('Lightcone Basic')
+
+                            for prop_ind in range(len(props)):
+                                prop = props[prop_ind]
+                                val = vals[prop_ind]
+                                lc.create_dataset(prop,data=val,maxshape=(None,),chunks=(2500,))
+                                lc[prop].attrs['units'] = units[prop_ind]
+                                lc[prop].attrs['h dependence'] = h_dependence[prop_ind]
+
+                            lc_file['Indexing'].create_dataset('sim_indices',data=sim_index,maxshape=(None,),chunks=(2500,))
+
+                        else:
+                            for prop_ind in range(len(props)):
+                                prop = props[prop_ind]
+                                val = vals[prop_ind]
+
+                                lc_file['Lightcone Basic'][prop].resize((n_halos[lc_ind],))
+                                lc_file['Lightcone Basic'][prop][n_halos[lc_ind]-n_selected:] = val
+
+                            lc_file['Indexing']['sim_indices'].resize((n_halos[lc_ind],))
+                            lc_file['Indexing']['sim_indices'][n_halos[lc_ind]-n_selected:] = sim_index
+
+                        # Calculate z indexing and save
+                        redshift_index = lc_file['Indexing']['redshift_indices'][:]
+                        for i in range(1,len(redshift_index)):
+                            inds = np.where(halo_redshift<=redshift_index['redshift'][i])[0]
+                            redshift_index['index'][i] += len(inds)
+                        lc_file['Indexing']['redshift_indices'][:] = redshift_index
+
+                        print(' '*80,end='\r')
+
+        # Indicate that light cones are completed
+        for i in range(n):
             with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
-                file.attrs['status_extra_initialized'] = True
-                file.attrs['status_extra_completed'] = True
 
-    def add_pos_properties(self,*keys):
-        """Select additional properties to include in the light cone for
-        properties with position information (ie velocity).
+                lc = file.create_group('Lightcone Full')
+                for key in file['Lightcone Basic'].keys():
+                    lc[key] = file['Lightcone Basic'][key]
+                file.attrs['status_basic'] = True
+                file.attrs['finished'] = dtime.isoformat(' ')
 
-        This will be done for all lightcones in the set.
-
-        Parameters
-        ----------
-        keys : float or floats
-            the keys used to identify fields to include in the light cone 
-            (exclude the _x, _y, _z components, ie for velocity give keys=['v'] 
-            not keys=['v_x','v_y','v_z'])
-
-        Returns
-        -------
-        none
-        """
-
-        # Make sure the keys exist, but aren't already included
-        pos_keys = ['pos','v','spin','cm']
-
-        with h5py.File(os.path.join(self.lc_path,'lc_0000.hdf5'),'r') as file:
-            old_lc_keys = [i[:-2] for i in file['Lightcone Full'].keys() if i[:-2] in pos_keys]
-        old_lc_keys = np.unique(old_lc_keys)
-
-        new_lc_keys = []
-        for key in keys:
-            if key in old_lc_keys:
-                warnings.warn("Key '{}' already in light cone. Skipping".format(key))
-            elif key+'_x' not in self.snap_keys_all:
-                warnings.warn("Key '{}' not found".format(key))
-            else:
-                new_lc_keys.append(key)
-
-        keys = np.sort(new_lc_keys)
-
-        # Note in LC files that we're adding properties
-        for i in range(self.n):
-            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
-                file.attrs['status_extra_initialized'] = True
-                file.attrs['status_extra_completed'] = False
-
-                shape = file['Indexing']['sim_indices'].shape
-                chunks = file['Indexing']['sim_indices'].chunks
-                if shape[0] < chunks[0]:
-                    chunks = shape
-                for key in keys:
-                    for subkey in ['_x','_y','_z']:
-                        file['Lightcone Full'].create_dataset(key+subkey,shape=shape,chunks=chunks)
-                        file['Lightcone Full'][key+subkey].attrs['units'] = self.sim_handler.key_units[key+subkey]
-                        file['Lightcone Full'][key+subkey].attrs['h dependence'] = self.sim_handler.key_h_dependence[key+subkey]
-
-        # Open simulation file
-        with h5py.File(os.path.join(self.sim_path,'data.hdf5'),"r") as sim_file:
-
-            # Loop through snapshots
-            for snap_ind in range(len(self.snapshots_use)):
-
-                # Collect snap information
-                snap_meta = self.snapshots_use[snap_ind]
-                snap_name = 'Snapshot {}'.format(snap_meta['index'])
-                print("\033[1m"+"Collecting sources from Snapshot {}.                        ".format(snap_meta['index'])+"\033[0m", end='\r')
-
-                # Loop through keys
-                for key in keys:
-
-                    # Load the snapshot data for the basic fields
-                    snap_grp = sim_file[snap_name]
-                    mass_index = self.sim_handler.get_mass_index(self.minimum_mass,snap_meta['index'])
-
-                    masses = snap_grp['mass'][:mass_index]
-                    mass_indices_final = np.where(masses >= self.minimum_mass)[0]
-                    if len(mass_indices_final) > 0:
-                        mass_index_final = np.amax(mass_indices_final)+1
-                    else:
-                        mass_index_final = 0
-
-                    values = np.array([
-                        snap_grp[key+'_x'][:mass_index_final],
-                        snap_grp[key+'_y'][:mass_index_final],
-                        snap_grp[key+'_z'][:mass_index_final]])
-
-                    for lc_ind in range(self.n):
-                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
-
-                        with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
-                            # Get indices of snap
-                            indexing = lc_file['Indexing']['sim_indices'][:]
-                            start = np.where(indexing['snap'] == snap_meta['index'])[0]
-                            if len(start) > 0:
-                                start = np.amin(start)
-                            else:
-                                start = 0
-                            indexing = indexing[indexing['snap']==snap_meta['index']]
-
-                            # Trim values to the indices
-                            lc_values = values[:,indexing['index']]
-
-                            # Get the matrices and do transformation
-                            los_matrix = lc_file.attrs['line of sight transformation matrix']
-                            pa_matrix = lc_file.attrs['position angle transformation matrix']
-                            lc_values = np.matmul(los_matrix,lc_values)
-                            lc_values = np.matmul(pa_matrix,lc_values)
-
-
-                            # Append the data
-                            lc_file['Lightcone Full'][key+'_x'][start:start+len(indexing)] = lc_values[1]
-                            lc_file['Lightcone Full'][key+'_y'][start:start+len(indexing)] = lc_values[2]
-                            lc_file['Lightcone Full'][key+'_z'][start:start+len(indexing)] = lc_values[0]
-
-        # Note in LC files that we're done
-        for i in range(self.n):
-            with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'a') as file:
-                file.attrs['status_extra_initialized'] = True
-                file.attrs['status_extra_completed'] = True

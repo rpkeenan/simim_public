@@ -334,9 +334,9 @@ class IllustrisCatalogs(SimCatalogs):
         n_halos = subhalos.pop('count')
         return subhalos, n_halos
 
-    def _get_rawsnapfile(self, snapshot):
+    def _get_rawsnapfiles(self, snapshot):
         """Get path to a snapshot's raw file"""
-        return os.path.join('groups_{:03d}'.format(snapshot))
+        return [os.path.join('groups_{:03d}'.format(snapshot))]
 
     def download(self, redownload=False):
         """Download Illustris/TNG subhalo (group) catalogs"""
