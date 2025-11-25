@@ -81,18 +81,20 @@ class LCHandler(Handler):
                                    Om0=self.metadata['cosmo_omega_matter'],
                                    Ob0=self.metadata['cosmo_omega_baryon'],
                                    Tcmb0=2.7255*u.K)
-        self.open_angle = self.metadata['open angle']
+        
         self.shape = self.metadata['shape']
-        self.aspect_ratio = self.metadata['aspect ratio']
         self.minimum_redshift = self.metadata['minimum redshift']
         self.maximum_redshift = self.metadata['maximum redshift']
         self.extra_props['cosmo'] = self.cosmo
-        self.extra_props['open_angle'] = self.open_angle
         self.extra_props['shape'] = self.shape
-        self.extra_props['aspect_ratio'] = self.aspect_ratio
         self.extra_props['minimum redshift'] = self.minimum_redshift
         self.extra_props['maximum redshift'] = self.maximum_redshift
 
+        if self.shape in ['circle','box']:
+            self.open_angle = self.metadata['open angle']
+            self.aspect_ratio = self.metadata['aspect ratio']
+            self.extra_props['open_angle'] = self.open_angle
+            self.extra_props['aspect_ratio'] = self.aspect_ratio
 
     def volume(self,redshift_min=None,redshift_max=None,shape=None,open_angle=None,aspect_ratio=None,in_h_units=None):
         """Compute the comoving volume of the light cone
@@ -131,6 +133,7 @@ class LCHandler(Handler):
             redshift_max=self.metadata['maximum redshift']
         if shape == None:
             shape=self.metadata['shape']
+        
         if open_angle == None:
             open_angle=self.metadata['open angle']
         if aspect_ratio == None:

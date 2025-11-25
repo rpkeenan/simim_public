@@ -104,7 +104,7 @@ class GenericLCMaker():
         z_steps = np.linspace(0,20.05,100000)
         D_steps = self.cosmo.comoving_distance(z_steps).value * self.metadata['cosmo_h']
         self.assign_z = interp1d(D_steps,z_steps)
-        self.assing_D = interp1d(z_steps,D_steps)
+        self.assign_D = interp1d(z_steps,D_steps)
 
         # Allow copying box?
         if self.sim in ['Illustris-1','Illustris-2','Illustris-3','Illustris-1-Dark','Illustris-2-Dark','Illustris-3-Dark','TNG100-1','TNG100-2','TNG100-3','TNG100-1-Dark','TNG100-2-Dark','TNG100-3-Dark']:
@@ -407,7 +407,7 @@ class LCMaker(GenericLCMaker):
         """
 
         # Basic input checks for any type of LC
-        super.__init__(self,sim,name,minimum_mass,overwrite)
+        super().__init__(sim,name,minimum_mass,overwrite)
 
         # Save geometry parameters
         if mode not in ['box','circle']:
@@ -846,7 +846,7 @@ class LCMaker(GenericLCMaker):
                 file.attrs['finished'] = dtime.isoformat(' ')
 
 
-class SphereMaker():
+class SphereMaker(GenericLCMaker):
     """class for handling lightsphere generation. Initial version has limited functionality for making local volumes"""
 
     def __init__(self,
@@ -891,7 +891,7 @@ class SphereMaker():
         """
 
         # Basic input checks for any type of LC
-        super.__init__(self,sim,name,minimum_mass,overwrite)
+        super().__init__(sim,name,minimum_mass,overwrite)
 
         # Save geometry parameters
         if mode not in ['sphere','hemisphere','quarter','eighth']:
@@ -908,11 +908,11 @@ class SphereMaker():
 
         # Check that we haven't requested something too big to fit in the box
         if mode == 'eighth':
-            dmax = self.simhandler.box_edge_no_h
+            dmax = self.sim_handler.box_edge_no_h
         else:
-            dmax = self.simhandler.box_edge_no_h/2
-        if self.assign_dist(redshift_max) > dmax:
-            raise ValueError("Simulation box is not large enough to contain the desired shell")
+            dmax = self.sim_handler.box_edge_no_h/2
+        if self.assign_D(redshift_max) > dmax:
+            raise ValueError(f"Simulation box (edge={self.sim_handler.box_edge_no_h:.1f}) is not large enough to contain the desired shell (rad={self.assign_D(redshift_max):.1f})")
 
         # Figure out the range of snapshots needed
         self.snapshots_use = np.zeros(0,dtype=self.snap_meta.dtype)
@@ -1015,7 +1015,6 @@ class SphereMaker():
                 # Calculate distance to use in box
                 start_distance = np.amax([snap_meta['distance_min'],distance_zmin])
                 end_distance = np.amin([snap_meta['distance_max'],distance_zmax])
-                use_distance = end_distance - start_distance
 
                 # Load the snapshot data for the basic fields
                 snap_grp = sim_file[snap_name]
@@ -1037,25 +1036,25 @@ class SphereMaker():
                 # Iterate through each light cone
                 for lc_ind in range(n):
                     # Now shift the box to start where we want to start
-                    positions = (positions * pointing_flips[lc_ind]) % box_size
+                    positions = (positions0 * pointing_flips[lc_ind]) % self.box_edge
 
                     # For eighth spheres, put the origin at the corner and call it good, for everything else, put the origin at the center of the box
                     if self.mode in ['sphere','hemisphere','quarter']:
-                        positions = (positions - pointing_start[lc_ind] + box_size/2) % box_size - box_size/2
+                        positions = (positions - pointing_start[lc_ind] + self.box_edge/2) % self.box_edge - self.box_edge/2
                     if self.mode == 'eighth':
-                        positions = (positions - pointing_start[lc_ind] + box_size) % box_size
+                        positions = (positions - pointing_start[lc_ind] + self.box_edge) % self.box_edge
 
                     # Select halos within field
                     candidate_distances2 = np.sum(positions**2,axis=1)
 
                     # For sphere or eighth, the geometry is such that we just take everything at the relevant distances
                     if self.mode in ['sphere','eighth']:
-                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2))
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2))[0]
                     # For hemisphere and quarter sphere, we need cuts on the other axes
                     if self.mode == 'hemisphere':
-                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0))
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0))[0]
                     if self.mode == 'quarter':
-                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0) & (positions[:,1]>0))
+                        selected_indices = np.nonzero((candidate_distances2 >= start_distance**2) & (candidate_distances2 < end_distance**2) & (positions[:,2]>0) & (positions[:,1]>0))[0]
                     
                     selected_distances = np.sqrt(candidate_distances2[selected_indices])
 
@@ -1075,8 +1074,8 @@ class SphereMaker():
                     # Compute z, ra, dec for selected halos
                     theta = np.arccos(pos_z / selected_distances)
                     phi = np.arctan2(pos_y, pos_x)
-                    ra = phi
-                    dec = (theta + np.pi/2) % np.pi
+                    ra = phi % (2*np.pi)
+                    dec = np.pi/2 - theta
                     halo_redshift = self.assign_z(selected_distances)
 
                     # Get masses of halos
