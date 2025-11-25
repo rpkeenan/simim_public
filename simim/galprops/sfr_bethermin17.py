@@ -274,7 +274,7 @@ class bethermin17_base():
             fsb = 0.03
         return fsb
     
-    def b17_sfr(self, m_stars, z, rng=np.random.default_rng()):
+    def b17_sfr(self, m_stars, z, rng=np.random.default_rng(), return_fracs=False):
         """Compute SFR given stellar mass and redshift"""
 
         sfr = self.sfms_msoffset * self.b17_sfms(m_stars, z)
@@ -283,15 +283,21 @@ class bethermin17_base():
         # Assign starbursts and quenched galaxies - these two probabilities
         # can be treated independently
         sbfrac = self.b17_sbfrac(m_stars, z)
-        sfr[rng.uniform(0,1,len(sfr)) < sbfrac] *= self.sfms_sboffset / self.sfms_msoffset
+        issb = rng.uniform(0,1,len(sfr)) < sbfrac
+        sfr[issb] *= self.sfms_sboffset / self.sfms_msoffset
 
         sffrac = self.b17_sffrac(m_stars, z)
-        sfr[rng.uniform(0,1,len(sfr)) > sffrac] = 0
+        isq = rng.uniform(0,1,len(sfr)) > sffrac
+        sfr[isq] = 0
+        issb[isq] = False
 
         # No SF above a limit
         sfr[sfr>self.sf_sflimit] = self.sf_sflimit
 
-        return sfr
+        if return_fracs:
+            return sfr, issb, isq
+        else:
+            return sfr
 
     def stellarmass(self, haloprop, redshift):
         """Compute stellar mass given haloprop (either mass or vmax) and redshift"""
