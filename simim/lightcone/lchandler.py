@@ -619,11 +619,3 @@ class LCIterator():
 
         return self.lc_handlers[str(number)].volume(redshift_min=redshift_min,redshift_max=redshift_max,shape=shape,open_angle=open_angle,aspect_ratio=aspect_ratio,in_h_units=in_h_units)
     
-    # def eval_stat_evo(self, redshift_bins, stat_function, kwargs, kw_remap={}, other_kws={}, zmin_kw=False, zmax_kw=False, volume_kw=False, give_args_in_h_units=None):
-    #     """Compute the evolution of a statistic over a specified set of
-    #     redshift bins"""
-
-    #     result = {}
-    #     for k, h in self.lc_handlers.items():
-    #         result[k] = h.eval_stat_evo(redshift_bins=redshift_bins, stat_function=stat_function, kwargs=kwargs, kw_remap=kw_remap, other_kws=other_kws, zmin_kw=zmin_kw, zmax_kw=zmax_kw, volume_kw=volume_kw, give_args_in_h_units=give_args_in_h_units)
-    #     return result
