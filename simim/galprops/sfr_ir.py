@@ -8,6 +8,7 @@ from simim.siminterface._sims import _checksim
 from simim.siminterface import SimHandler
 from simim.galprops.galprops_am import am_dfcat, modified_schechter_gen
 
+from simim._verbose import simim_verbose
 
 
 
@@ -112,7 +113,7 @@ class g13irlf_base():
 
         # i is counter, idx is snap number
         for i,idx in enumerate(handler.snap_meta['index']):
-            print("\033[1m"+"Perroming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
+            simim_verbose("\033[1m"+"Performing Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
             
             snap = handler.get_snap(idx)
             

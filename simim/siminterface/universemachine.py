@@ -15,6 +15,8 @@ import numpy as np
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim
 
+from simim._verbose import simim_verbose
+
 _testsnaps = np.array(['sfr_catalog_0.055623.txt','sfr_catalog_0.506185.txt','sfr_catalog_0.994717.txt'])
 
 class UniversemachineCatalogs(SimCatalogs):
@@ -406,7 +408,7 @@ class UniversemachineCatalogs(SimCatalogs):
         # Download each snap
         for i in range(len(self.download_snaps)):
             snap = self.download_snaps[i]
-            print("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
+            simim_verbose("downloading item {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap]))
             file_path = os.path.join(self.path,'raw',self.web_files[snap])
             if self.sim == '_testbox':
                 shutil.copy(self.webpage.joinpath(self.web_files[snap]),file_path)

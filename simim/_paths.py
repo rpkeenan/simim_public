@@ -3,6 +3,7 @@ try:
     from importlib.resources import files
 except:
     from importlib_resources import files
+from simim._verbose import simim_verbose, simim_input
 
 def _checkload_root_file(path):
     """Check if root path file exists and read file contents"""
@@ -68,17 +69,17 @@ class _SimIMPaths():
         # Check if a root already exists and whehter it should be replaced
         if self.root is not None:
             if root != self.root:
-                print("A root has already been specified:")
-                print("   {}".format(self.root))
-                answer = input("Do you want to set a new root? y/n: ")
+                simim_verbose("A root has already been specified:",level=-1)
+                simim_verbose("   {}".format(self.root),level=-1)
+                answer = simim_input("Do you want to set a new root? y/n: ")
 
                 while answer != 'y':
                     if answer == 'n':
-                        print("Keeping existing root")
+                        simim_verbose("Keeping existing root",level=-1)
                         root = self.root
                         break
-                    print("Response not recognized.")
-                    answer = input("Do you want to set a new root? y/n: ")
+                    simim_verbose("Response not recognized.",level=-1)
+                    answer = simim_input("Do you want to set a new root? y/n: ")
 
         # Confirm location of root
         if not os.path.exists(root):
@@ -87,15 +88,15 @@ class _SimIMPaths():
         root = os.path.abspath(root)
 
         if confirm_with_user:
-            print("Files will be saved in {}".format(os.path.join(root,'simim_resources')))
-            answer = input("Is this okay? y/n: ")
+            simim_verbose("Files will be saved in {}".format(os.path.join(root,'simim_resources')),level=-1)
+            answer = simim_input("Is this okay? y/n: ",level=-1)
             while answer != 'y':
                 if answer == 'n':
-                    print("Aborting root setup")
+                    simim_verbose("Aborting root setup",level=-1)
                     return
-                print("Response not recognized.\n")
-                print("Files will be saved in {}".format(os.path.join(root,'simim_resources')))
-                answer = input("Is this okay? y/n: ")
+                simim_verbose("Response not recognized.\n",level=-1)
+                simim_verbose("Files will be saved in {}".format(os.path.join(root,'simim_resources')),level=-1)
+                answer = simim_input("Is this okay? y/n: ")
 
         # Save the root location
         with open(self.root_file,'w') as file:
@@ -122,20 +123,20 @@ class _SimIMPaths():
         # Check if a path is already specified
         if checkoverwrite:
             if sim in self.sims:
-                print("A path for this simulation has already been specified:")
-                print("   {}".format(self.sims[sim]))
-                answer = input("Do you want to replace this file? y/n: ")
+                simim_verbose("A path for this simulation has already been specified:",level=-1)
+                simim_verbose("   {}".format(self.sims[sim]),level=-1)
+                answer = simim_input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
                     if answer == 'n':
-                        print("Keeping existing path")
+                        simim_verbose("Keeping existing path",level=-1)
                         return
-                    print("Response not recognized.")
-                    answer = input("Do you want to replace this file? y/n: ")
+                    simim_verbose("Response not recognized.",level=-1)
+                    answer = simim_input("Do you want to replace this file? y/n: ")
 
         # Get the new path and add to the list
         if not new_path:
-            new_path = input("Please specify a path for {} data: ".format(sim))
+            new_path = simim_input("Please specify a path for {} data: ".format(sim))
             if not os.path.exists(new_path):
                 raise NameError("Specified path does not exist. Please create path and try again.")
         elif new_path == 'auto':
@@ -161,20 +162,20 @@ class _SimIMPaths():
         # Check if a path is already specified
         if checkoverwrite:
             if sim in self.lcs:
-                print("A location for light cones from this simulation has already been specified:")
-                print("   {}".format(self.lcs[sim]))
-                answer = input("Do you want to replace this file? y/n: ")
+                simim_verbose("A location for light cones from this simulation has already been specified:",level=-1)
+                simim_verbose("   {}".format(self.lcs[sim]),level=-1)
+                answer = simim_input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
                     if answer == 'n':
-                        print("Keeping existing path")
+                        simim_verbose("Keeping existing path",level=-1)
                         return
-                    print("Response not recognized.")
-                    answer = input("Do you want to replace this file? y/n: ")
+                    simim_verbose("Response not recognized.",level=-1)
+                    answer = simim_input("Do you want to replace this file? y/n: ")
 
         # Get the new path and add to the list
         if not new_path:
-            new_path = input("Please specify a path for {} data: ".format(sim))
+            new_path = simim_input("Please specify a path for {} data: ".format(sim))
             if not os.path.exists(new_path):
                 raise NameError("Specified path does not exist. Please create path and try again.")
         elif new_path == 'auto':
@@ -200,20 +201,20 @@ class _SimIMPaths():
         # Check if a path is already specified
         if checkoverwrite:
             if item in self.props:
-                print("A location for this SFR data has already been specified:")
-                print("   {}".format(self.props[item]))
-                answer = input("Do you want to replace this file? y/n: ")
+                simim_verbose("A location for this SFR data has already been specified:",level=-1)
+                simim_verbose("   {}".format(self.props[item]),level=-1)
+                answer = simim_input("Do you want to replace this file? y/n: ")
 
                 while answer != 'y':
                     if answer == 'n':
-                        print("Keeping existing path")
+                        simim_verbose("Keeping existing path",level=-1)
                         return
-                    print("Response not recognized.")
-                    answer = input("Do you want to replace this file? y/n: ")
+                    simim_verbose("Response not recognized.",level=-1)
+                    answer = simim_input("Do you want to replace this file? y/n: ")
 
         # Get the new path and add to the list
         if not new_path:
-            new_path = input("Please specify a path for {} data: ".format(item))
+            new_path = simim_input("Please specify a path for {} data: ".format(item))
             if not os.path.exists(new_path):
                 raise NameError("Specified path does not exist. Please create path and try again.")
         elif new_path == 'auto':
@@ -234,9 +235,9 @@ def setupsimim():
 
     path = _SimIMPaths()
 
-    print("Please specify a path to save data directories.")
-    print("Specifying no path will set the path to your home directory.")
-    root = input("Path: ")
+    simim_verbose("Please specify a path to save data directories.",level=-1)
+    simim_verbose("Specifying no path will set the path to your home directory.",level=-1)
+    root = simim_input("Path: ")
     if root == '':
         root = '~'
     elif not os.path.exists(root):

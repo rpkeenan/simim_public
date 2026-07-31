@@ -16,6 +16,8 @@ from simim.siminterface import SimHandler
 from simim.siminterface._sims import _checksim
 from simim.lightcone.lchandler import LCIterator
 
+from simim._verbose import simim_verbose, simim_input
+
 class GenericLCMaker():
     """base class for LC makers - specific geometries implemented elsewhere
     
@@ -69,16 +71,16 @@ class GenericLCMaker():
             paths._newlcpath(self.sim)
         self.lc_path = os.path.join(paths.lcs[sim], name)
         if os.path.exists(self.lc_path) and overwrite=='check':
-            print("A file for light cones of this name already exists.")
-            print("Light cones already saved may be overwritten.")
-            answer = input("Do you wish to proceed? y/n: ")
+            simim_verbose("A file for light cones of this name already exists.",level=-1)
+            simim_verbose("Light cones already saved may be overwritten.",level=-1)
+            answer = simim_input("Do you wish to proceed? y/n: ")
 
             while answer != 'y':
                 if answer == 'n':
-                    print("Aborting setup")
+                    simim_verbose("Aborting setup",level=-1)
                     raise ValueError("name already in use")
-                print("Response not recognized.")
-                answer = input("Do you wish to proceed? y/n: ")
+                simim_verbose("Response not recognized.",level=-1)
+                answer = simim_input("Do you wish to proceed? y/n: ")
         elif os.path.exists(self.lc_path) and overwrite==False:
             raise ValueError("name already in use")
         elif not os.path.exists(self.lc_path):
@@ -181,7 +183,7 @@ class GenericLCMaker():
                 # Collect snap information
                 snap_meta = self.snapshots_use[snap_ind]
                 snap_name = 'Snapshot {}'.format(snap_meta['index'])
-                print("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
+                simim_verbose("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
 
                 # Loop through keys
                 for key in keys:
@@ -203,7 +205,7 @@ class GenericLCMaker():
                         values = snap_grp[key][:mass_index_final]
 
                     for lc_ind in range(self.n):
-                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+                        # simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
 
                         # Get indices of snap
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
@@ -285,7 +287,7 @@ class GenericLCMaker():
                 # Collect snap information
                 snap_meta = self.snapshots_use[snap_ind]
                 snap_name = 'Snapshot {}'.format(snap_meta['index'])
-                print("\033[1m"+"Collecting sources from Snapshot {}.                        ".format(snap_meta['index'])+"\033[0m", end='\r')
+                simim_verbose("\033[1m"+"Collecting sources from Snapshot {}.                        ".format(snap_meta['index'])+"\033[0m", end='\r')
 
                 # Loop through keys
                 for key in keys:
@@ -307,7 +309,7 @@ class GenericLCMaker():
                         snap_grp[key+'_z'][:mass_index_final]])
 
                     for lc_ind in range(self.n):
-                        # print(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+                        # simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
 
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
                             # Get indices of snap
@@ -431,7 +433,7 @@ class LCMaker(GenericLCMaker):
         backsize = self.cosmo.comoving_transverse_distance(self.redshift_max).value
         backsize = backsize * self.metadata['cosmo_h'] * self.openangle
         if backsize > self.box_edge:
-            print(backsize, self.box_edge)
+            simim_verbose(backsize, self.box_edge,level=-1)
             raise ValueError("Open angle larger than simulation box at max redshift")
 
         # Figure out the range of snapshots needed
@@ -572,7 +574,7 @@ class LCMaker(GenericLCMaker):
             raise ValueError("Invalid mode")
 
         # Print status
-        print("Generating lines of sight.")
+        simim_verbose("Generating lines of sight.")
 
         # Set up pointing parameters - starting position
         pointing_start = rng.random((n,3)) * self.box_edge
@@ -615,7 +617,7 @@ class LCMaker(GenericLCMaker):
 
         # Initialize HDF5 file with metadata and a light cone dataset
         # Print status
-        print("Creating files and adding metadata.")
+        simim_verbose("Creating files and adding metadata.")
         for i in range(n):
             with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'w') as file:
                 for key in self.metadata.keys():
@@ -658,7 +660,7 @@ class LCMaker(GenericLCMaker):
 
                 snap_meta = self.snapshots_use[snap_ind]
                 snap_name = 'Snapshot {}'.format(snap_meta['index'])
-                print("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
+                simim_verbose("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
 
                 # We will work in distance units mostly
                 # Calculate distance to use in box
@@ -685,7 +687,7 @@ class LCMaker(GenericLCMaker):
 
                 # Iterate through each light cone
                 for lc_ind in range(n):
-                    print(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r')
+                    simim_verbose(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r')
 
                     # Compute how far we can go in the box
                     buffer_distance = snap_meta['transverse_distance_max'] * pointing_buffer_coef[lc_ind]
@@ -833,7 +835,7 @@ class LCMaker(GenericLCMaker):
                                 redshift_index['index'][i] += len(inds)
                             lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-                print(' '*80,end='\r')
+                simim_verbose(' '*80,end='\r')
 
         # Indicate that light cones are completed
         for i in range(n):
@@ -945,7 +947,7 @@ class SphereMaker(GenericLCMaker):
         self.n = n
 
         # Print status
-        print("Generating lines of sight.")
+        simim_verbose("Generating lines of sight.")
 
         # Set up pointing parameters - starting position
         pointing_start = rng.random((n,3)) * self.box_edge
@@ -973,7 +975,7 @@ class SphereMaker(GenericLCMaker):
 
         # Initialize HDF5 file with metadata and a light cone dataset
         # Print status
-        print("Creating files and adding metadata.")
+        simim_verbose("Creating files and adding metadata.")
         for i in range(n):
             with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(i)),'w') as file:
                 for key in self.metadata.keys():
@@ -1009,7 +1011,7 @@ class SphereMaker(GenericLCMaker):
 
                 snap_meta = self.snapshots_use[snap_ind]
                 snap_name = 'Snapshot {}'.format(snap_meta['index'])
-                print("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
+                simim_verbose("\033[1m"+"Collecting sources from Snapshot {}.           ".format(snap_meta['index'])+"\033[0m", end="\r")
 
                 # We will work in distance units mostly
                 # Calculate distance to use in box
@@ -1133,7 +1135,7 @@ class SphereMaker(GenericLCMaker):
                             redshift_index['index'][i] += len(inds)
                         lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-            print(' '*80,end='\r')
+            simim_verbose(' '*80,end='\r')
 
         # Indicate that light cones are completed
         for i in range(n):

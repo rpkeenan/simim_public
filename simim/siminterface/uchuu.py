@@ -10,6 +10,8 @@ import numpy as np
 
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 
+from simim._verbose import simim_verbose
+
 class UchuuCatalogs(SimCatalogs):
     def __init__(self,
                  sim, path='auto',
@@ -373,6 +375,6 @@ class UchuuCatalogs(SimCatalogs):
                     webpage = self.webpage + 'SFR/'
                 if df > 3:
                     webpage = self.webpage + 'SFH/'
-                print("downloading snapshot {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap_id].replace('data1',f'data{df}')))
+                simim_verbose("downloading snapshot {} of {} ({})".format(i+1,len(self.download_snaps),self.web_files[snap_id].replace('data1',f'data{df}')))
                 urlretrieve(webpage+self.web_files[snap_id].replace('data1',f'data{df}'),file_path.replace('data1',f'data{df}'))
 

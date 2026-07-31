@@ -12,6 +12,8 @@ from simim._handlers import Handler
 from simim.map import Gridder
 from simim.siminterface._sims import _checksim
 
+from simim._verbose import simim_verbose
+
 class SnapHandler(Handler):
     """Handler for individual snapshots - see generic Handler
     documentation. 
@@ -271,7 +273,7 @@ class SimHandler():
         if self.init_snaps and not remake:
             raise ValueError("Snapshots already initialized")
         
-        print('Initializing snapshots, this may take a few seconds')
+        simim_verbose('Initializing snapshots, this may take a few seconds')
         self.snap_handlers = {}
         # Set up snapshot handlers
         for i in range(len(self.snap_meta)):
@@ -280,7 +282,7 @@ class SimHandler():
             redshift = self.snap_meta['redshift'][i]
 
             self.snap_handlers[str(snap)] = SnapHandler(self.path+'/data.hdf5',snap,redshift,self.cosmo,self.box_edge_h,in_h_units=self.default_in_h_units)
-        print("Snapshots initialized.")
+        simim_verbose("Snapshots initialized.")
         self.init_snaps = True
 
     def set_in_h_units(self,in_h_units):
@@ -550,7 +552,7 @@ class SimHandler():
             raise ValueError("This handler instance was not initialized with snapshots available")
         for i in range(len(self.snap_meta)):
             snap = self.snap_meta['index'][i]
-            print("\033[1m"+"Assigning props for Snapshot {}.  ".format(snap)+"\033[0m",end='\r')
+            simim_verbose("\033[1m"+"Assigning props for Snapshot {}.  ".format(snap)+"\033[0m",end='\r')
             handler = self.get_snap(snap)
 
             handler.make_property(property=property,
@@ -583,7 +585,7 @@ class SimHandler():
 
                 handler.write_property(*names,overwrite=overwrite,dtype=writedtype)
                 handler.unload_property(*names)
-        print("")
+        simim_verbose("")
 
     def delete_property(self,*property_names):
         """Remove a property from the saved file on the disk for all simulation snapshots
@@ -662,12 +664,12 @@ class SimHandler():
             snaps = np.arange(len(self.snap_meta))
         for i in snaps:
             snap = self.snap_meta['index'][i]
-            print("\033[1m"+"Collecting sources from Snapshot {}.  ".format(snap)+"\033[0m",end='\r')
+            simim_verbose("\033[1m"+"Collecting sources from Snapshot {}.  ".format(snap)+"\033[0m",end='\r')
             redshifts.append(self.snap_meta['redshift'][i])
 
             handler = self.get_snap(snap)
             vals.append(handler.eval_stat(stat_function,kwargs,kw_remap,other_kws=other_kws,use_all_inds=use_all_inds,give_args_in_h_units=give_args_in_h_units))
-        print("")
+        simim_verbose("")
             
         return vals, redshifts
 
