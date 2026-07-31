@@ -25,7 +25,7 @@ dependencies = [
     "h5py",
     "importlib_resources",
     "matplotlib",
-    "numpy",
+    "numpy<2",
     "requests",
     "scipy",
 ]
