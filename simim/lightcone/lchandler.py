@@ -12,6 +12,8 @@ from simim._paths import _SimIMPaths
 from simim._handlers import Handler
 from simim._pltsetup import *
 
+from simim._verbose import simim_verbose
+
 from fnmatch import fnmatch
 
 class LCHandler(Handler):
@@ -532,7 +534,7 @@ class LCIterator():
         if numbers is None:
             files = os.listdir(path)
             numbers = [int(f.split('_')[1].split('.')[0]) for f in files if fnmatch(f,'lc_*.hdf5')]
-            print("No lightcone numbers specified, initializing all {} light cones in {}/{}".format(len(numbers),sim,name))
+            simim_verbose("No lightcone numbers specified, initializing all {} light cones in {}/{}".format(len(numbers),sim,name))
         
         # Need these for iteration
         self.n_lcs = len(numbers)

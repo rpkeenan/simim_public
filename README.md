@@ -26,7 +26,10 @@ but are relatively sparse for the galprops, lightcone, and siminterface modules.
 
 Change Log
 ----------
-Version 0.3.10
+Version 0.3.12
+- Created a verbosity setting to allow better control of printed information
+
+Version 0.3.11
 - Added a method for making spherical lightcones to represent nearby volumes
 - Made Schechter function work for abundance matching
 - Various bug fixes

@@ -8,6 +8,8 @@ from simim.siminterface import _illustris_datahandling as idh
 from simim.siminterface._rawsiminterface import SimCatalogs, Snapshot
 from simim.siminterface._sims import _checksim, _illsims, _tngsims
 
+from simim._verbose import simim_verbose
+
 class IllustrisCatalogs(SimCatalogs):
     """Class to download and format Illustris or TNG group catalogs"""
 
@@ -373,7 +375,7 @@ class IllustrisCatalogs(SimCatalogs):
             wget_cmd += '-P {}'.format(file_path)
 
             # Download the data and check that it all arrives, retry if it doesn't
-            print("\nDownloading Snapshot {}".format(i))
+            simim_verbose("\nDownloading Snapshot {}".format(i))
             check_pass = False
             try:
                 while not check_pass:
@@ -389,9 +391,9 @@ class IllustrisCatalogs(SimCatalogs):
                         check_pass = np.all(check)
 
                     if not check_pass:
-                        print("Not all files downloaded correctly, retrying")
+                        simim_verbose("Not all files downloaded correctly, retrying",level=-1)
             except:
-                print('Interupted!!!')
+                simim_verbose('Interupted!!!')
 
     def download_meta(self, redownload=False):
         """Download and generate metadata for the set of snapshots 

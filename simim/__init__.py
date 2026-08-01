@@ -10,3 +10,6 @@ from . import instrument
 
 # Make constants easily accessible
 from . import constants
+
+# Setup verbose feature
+from ._verbose import set_simim_verbosity

@@ -8,6 +8,7 @@ from os.path import isfile, join, sep
 import numpy as np
 import h5py
 
+from simim._verbose import simim_verbose
 
 def _gcPath(basePath, snapNum, chunkNum=0):
     """ Return absolute path to a group catalog HDF5 file (modify as needed). """
@@ -42,7 +43,7 @@ def _loadObjects(basePath, snapNum, gName, nName, fields):
         result['count'] = f['Header'].attrs['N' + nName + '_Total']
 
         if not result['count']:
-            print('warning: zero groups, empty return (snap=' + str(snapNum) + ').')
+            simim_verbose('warning: zero groups, empty return (snap=' + str(snapNum) + ').')
             return result
 
         # if fields not specified, load everything

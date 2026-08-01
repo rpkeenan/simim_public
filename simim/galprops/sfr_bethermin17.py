@@ -9,6 +9,7 @@ from simim.siminterface._sims import _checksim
 from simim.galprops.log10normal import log10normal
 from simim.galprops.galprops_am import am_dfcat, double_schechter_gen
 from simim.siminterface import SimHandler
+from simim._verbose import simim_verbose
 
 from astropy.cosmology import FlatLambdaCDM
 
@@ -193,7 +194,7 @@ class bethermin17_base():
 
         # i is counter, idx is snap number
         for i,idx in enumerate(handler.snap_meta['index']):
-            print("\033[1m"+"Perfoming Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
+            simim_verbose("\033[1m"+"Performing Abundance Match for Snapshot {}.  ".format(idx)+"\033[0m",end='\r')
             
             snap = handler.get_snap(idx)
             
@@ -218,7 +219,7 @@ class bethermin17_base():
             if len(snap_haloprop) > 0:
                 mstarofhalo, _ = am_dfcat(snap_haloprop,smf_freeze,missing_pmass_low_p1=missing_pmass_low_p1,missing_pmass_low_p2=missing_pmass_low_p2)
                 smgrid[i] = mstarofhalo(halopropgrid)
-        print()
+        simim_verbose()
 
         np.save(os.path.join(self.path,'mass_axis.npy'), halopropgrid)
         np.save(os.path.join(self.path,'redshift_axis.npy'), zgrid)

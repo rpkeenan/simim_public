@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import rv_continuous
 from scipy.special import gamma, gammaincc, expi
+from simim._verbose import simim_verbose
 
 def am_dfcat(prop1_cat: np.ndarray, prop2_rv: rv_continuous, 
              prop2_min: float = 0, prop2_max: float = np.inf, 
@@ -299,17 +300,17 @@ def am_dfdf(prop1_rv:rv_continuous, prop2_rv:rv_continuous,
             return ppf_func_p2(cdf_func_p1(p1))
 
     # pcs = np.array([.25,.5,.75])
-    # print('ppf_func_p1:', ppf_func_p1(pcs))
-    # print('cdf_func_p2:', cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])))
-    # print('ppf_func_p1(cdf_func_p2):', ppf_func_p1(cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908]))))
-    # print('p1ofp2:',p1ofp2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])))
+    # simim_verbose('ppf_func_p1:', ppf_func_p1(pcs),level=2)
+    # simim_verbose('cdf_func_p2:', cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])),level=2)
+    # simim_verbose('ppf_func_p1(cdf_func_p2):', ppf_func_p1(cdf_func_p2(np.array([22411.17569982, 240140.0741543, 8718959.09962908]))),level=2)
+    # simim_verbose('p1ofp2:',p1ofp2(np.array([22411.17569982, 240140.0741543, 8718959.09962908])),level=2)
 
-    # print()
+    # simim_verbose(level=2)
 
-    # print('ppf_func_p2:', ppf_func_p2(pcs))
-    # print('cdf_func_p1:', cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])))
-    # print('ppf_func_p2(cdf_func_p1):', ppf_func_p2(cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10]))))
-    # print('p2ofp1:',p2ofp1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])))
+    # simim_verbose('ppf_func_p2:', ppf_func_p2(pcs))
+    # simim_verbose('cdf_func_p1:', cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])),level=2)
+    # simim_verbose('ppf_func_p2(cdf_func_p1):', ppf_func_p2(cdf_func_p1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10]))),level=2)
+    # simim_verbose('p2ofp1:',p2ofp1(np.array([1.38999992e+10, 2.23399997e+10, 4.90000015e+10])),level=2)
 
     return p2ofp1, p1ofp2
 

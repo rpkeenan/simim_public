@@ -10,6 +10,7 @@ import numpy as np
 from simim._paths import _SimIMPaths
 from simim.siminterface._sims import _checksim
 
+from simim._verbose import simim_verbose, simim_input
 
 class Snapshot():
     """Class containing information for individual snapshots
@@ -325,15 +326,15 @@ class SimCatalogs():
         and validated."""
 
         # Confirm you really want to delete the stuff you spend two days downloading
-        print("This will delete raw files for {}.".format(self.sim))
-        answer = input("Are you sure you wish to proceed? y/n: ")
+        simim_verbose("This will delete raw files for {}.".format(self.sim),level=-1)
+        answer = simim_input("Are you sure you wish to proceed? y/n: ")
         while answer != 'y':
             if answer == 'n':
-                print("Aborting cleanup")
+                simim_verbose("Aborting cleanup",level=-1)
                 return
-            print("Answer not recognized.\n")
+            simim_verbose("Answer not recognized.\n",level=-1)
 
-            answer = input("Are you sure you wish to proceed? y/n: ")
+            answer = simim_input("Are you sure you wish to proceed? y/n: ")
 
         # Remove stuff
         file_path = os.path.join(self.path,'raw')
@@ -385,15 +386,15 @@ class SimCatalogs():
 
         # Confirm you really want to delete the stuff you spend two days downloading
         if realtime_clean_raw and realtime_clean_raw_check:
-            print("This will delete raw files for {} after they are processed.".format(self.sim))
-            answer = input("Are you sure you wish to proceed? y/n: ")
+            simim_verbose("This will delete raw files for {} after they are processed.".format(self.sim),level=-1)
+            answer = simim_input("Are you sure you wish to proceed? y/n: ")
             while answer != 'y':
                 if answer == 'n':
-                    print("Aborting")
+                    simim_verbose("Aborting",level=-1)
                     return
-                print("Answer not recognized.\n")
+                simim_verbose("Answer not recognized.\n",level=-1)
 
-                answer = input("Are you sure you wish to proceed? y/n: ")
+                answer = simim_input("Are you sure you wish to proceed? y/n: ")
 
         # Figure out what to do - 1) create new thing altogether (overwriting old one)
         #    2) add things to existing file - only add things not already present
@@ -464,7 +465,7 @@ class SimCatalogs():
 
         # Now get the data
         for snap in snaps_to_do:
-            print("Formatting snap {}".format(snap))
+            simim_verbose("Formatting snap {}".format(snap))
 
             # Load stuff in from original file formats
             subhalos, n_halos = self._loader(path=os.path.join(self.path,'raw',''), snapshot=snap, fields=self.all_fields.keys())
