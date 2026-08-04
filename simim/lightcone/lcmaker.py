@@ -208,7 +208,7 @@ class GenericLCMaker():
                         # If verbose level is 2 print each step along the light cone too...
                         if lc_ind == 0:
                             simim_verbose(level=2)
-                        simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', level=2)
+                        simim_verbose("    Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', level=2)
 
                         # Get indices of snap
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
@@ -315,7 +315,7 @@ class GenericLCMaker():
                         # If verbose level is 2 print each step along the light cone too...
                         if lc_ind == 0:
                             simim_verbose(level=2)
-                        simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', levle=2)
+                        simim_verbose("    Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', levle=2)
 
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
                             # Get indices of snap
@@ -695,7 +695,7 @@ class LCMaker(GenericLCMaker):
                 for lc_ind in range(n):
                     if lc_ind == 0:
                         simim_verbose(level=2)
-                    simim_verbose(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r', level=2)
+                    simim_verbose("    Working on light cone {}/{}".format(lc_ind+1,n), end='\r', level=2)
 
                     # Compute how far we can go in the box
                     buffer_distance = snap_meta['transverse_distance_max'] * pointing_buffer_coef[lc_ind]
