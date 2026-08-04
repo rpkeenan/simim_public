@@ -312,7 +312,10 @@ class GenericLCMaker():
                         snap_grp[key+'_z'][:mass_index_final]])
 
                     for lc_ind in range(self.n):
-                        # simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+                        # If verbose level is 2 print each step along the light cone too...
+                        if lc_ind == 0:
+                            simim_verbose(level=2)
+                        simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', levle=2)
 
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
                             # Get indices of snap
@@ -690,7 +693,9 @@ class LCMaker(GenericLCMaker):
 
                 # Iterate through each light cone
                 for lc_ind in range(n):
-                    simim_verbose(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r')
+                    if lc_ind == 0:
+                        simim_verbose(level=2)
+                    simim_verbose(" "*40+"Working on light cone {}/{}".format(lc_ind+1,n), end='\r', level=2)
 
                     # Compute how far we can go in the box
                     buffer_distance = snap_meta['transverse_distance_max'] * pointing_buffer_coef[lc_ind]
@@ -838,7 +843,7 @@ class LCMaker(GenericLCMaker):
                                 redshift_index['index'][i] += len(inds)
                             lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-                simim_verbose(' '*80,end='\r')
+                simim_verbose('')
 
         # Indicate that light cones are completed
         for i in range(n):
@@ -1138,7 +1143,7 @@ class SphereMaker(GenericLCMaker):
                             redshift_index['index'][i] += len(inds)
                         lc_file['Indexing']['redshift_indices'][:] = redshift_index
 
-            simim_verbose(' '*80,end='\r')
+            simim_verbose('')
 
         # Indicate that light cones are completed
         for i in range(n):
