@@ -205,7 +205,10 @@ class GenericLCMaker():
                         values = snap_grp[key][:mass_index_final]
 
                     for lc_ind in range(self.n):
-                        # simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r')
+                        # If verbose level is 2 print each step along the light cone too...
+                        if lc_ind == 0:
+                            simim_verbose(level=2)
+                        simim_verbose(" "*40+"Working on light cone {}/{}          ".format(lc_ind+1,self.n), end='\r', level=2)
 
                         # Get indices of snap
                         with h5py.File(os.path.join(self.lc_path,'lc_{:04d}.hdf5'.format(lc_ind)),'a') as lc_file:
