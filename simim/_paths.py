@@ -89,7 +89,7 @@ class _SimIMPaths():
 
         if confirm_with_user:
             simim_verbose("Files will be saved in {}".format(os.path.join(root,'simim_resources')),level=-1)
-            answer = simim_input("Is this okay? y/n: ",level=-1)
+            answer = simim_input("Is this okay? y/n: ")
             while answer != 'y':
                 if answer == 'n':
                     simim_verbose("Aborting root setup",level=-1)
