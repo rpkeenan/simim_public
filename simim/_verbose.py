@@ -67,16 +67,14 @@ def simim_verbose(*args,level=1,**kwargs):
     if level <= _simim_verbosity:
         print(_simim_verbosity_prefix,*args,flush=_simim_verbosity_flush,**kwargs)
 
-def simim_input(arg,**kwargs):
+def simim_input(arg):
     """Wrap input calls to match verbose prefix (cannot change verbosity level)
     
     Parameters
     ----------
     arg: str
         Passed to input function
-    **kwargs:
-        Passed to input function
     """
     global _simim_verbosity_prefix
 
-    return input(_simim_verbosity_prefix+arg,**kwargs)
+    return input(_simim_verbosity_prefix+arg)

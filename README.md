@@ -26,6 +26,9 @@ but are relatively sparse for the galprops, lightcone, and siminterface modules.
 
 Change Log
 ----------
+Version 0.3.13
+- Fixed verbosity setting feature that breaks user inputs
+
 Version 0.3.12
 - Created a verbosity setting to allow better control of printed information
 
